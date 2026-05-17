@@ -1,0 +1,184 @@
+.ad-briefs-page {
+  min-height: calc(100vh - 4rem);
+  color: #f8fafc;
+}
+
+.ad-briefs-shell {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.ad-briefs-hero {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.12), transparent 35%),
+    rgba(15, 23, 42, 0.9);
+  border-radius: 1.5rem;
+  padding: 2.25rem;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+  margin-bottom: 1.5rem;
+}
+
+.ad-briefs-eyebrow {
+  margin: 0 0 0.6rem;
+  color: #38bdf8;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ad-briefs-hero h1 {
+  margin: 0;
+  color: #ffffff;
+  font-size: clamp(2.7rem, 5.5vw, 4.8rem);
+  line-height: 0.92;
+  font-weight: 900;
+  letter-spacing: -0.07em;
+}
+
+.ad-briefs-hero p:last-child {
+  max-width: 780px;
+  margin: 1rem 0 0;
+  color: #cbd5e1;
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.ad-briefs-form-card {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.08), transparent 35%),
+    rgba(15, 23, 42, 0.9);
+  border-radius: 1.5rem;
+  padding: 2rem;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+  margin-bottom: 1.5rem;
+}
+
+.ad-briefs-input-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.ad-briefs-form-card input {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  outline: none;
+  border-radius: 1rem;
+  background: rgba(2, 6, 23, 0.62);
+  color: #e2e8f0;
+  padding: 1rem 1.1rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.ad-briefs-form-card input::placeholder {
+  color: #64748b;
+}
+
+.ad-briefs-form-card input:focus {
+  border-color: rgba(56, 189, 248, 0.55);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
+}
+
+.ad-briefs-form-card button {
+  margin-top: 1.25rem;
+  border: none;
+  cursor: pointer;
+  border-radius: 1rem;
+  padding: 0.95rem 1.35rem;
+  color: white;
+  font-weight: 900;
+  background: linear-gradient(135deg, #38bdf8, #6366f1);
+  box-shadow: 0 16px 40px rgba(99, 102, 241, 0.28);
+  transition: 0.2s ease;
+}
+
+.ad-briefs-form-card button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 50px rgba(99, 102, 241, 0.38);
+}
+
+.ad-briefs-form-card button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ad-briefs-error {
+  margin-top: 1rem;
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  background: rgba(127, 29, 29, 0.28);
+  color: #fecaca;
+  border-radius: 1rem;
+  padding: 1rem;
+  font-size: 0.95rem;
+}
+
+.ad-briefs-result-card {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 1.5rem;
+  padding: 2rem;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+}
+
+.ad-briefs-result-header {
+  margin-bottom: 1.25rem;
+}
+
+.ad-briefs-result-header p {
+  margin: 0 0 0.45rem;
+  color: #38bdf8;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ad-briefs-result-header h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 2rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.ad-briefs-result-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.brief-field-card {
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(2, 6, 23, 0.38);
+  border-radius: 1.2rem;
+  padding: 1.15rem;
+  margin-bottom: 1rem;
+}
+
+.brief-field-card p {
+  margin: 0;
+  color: #38bdf8;
+  font-size: 0.82rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.brief-field-card div {
+  margin-top: 0.65rem;
+  color: #cbd5e1;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 850px) {
+  .ad-briefs-input-grid,
+  .ad-briefs-result-grid {
+    grid-template-columns: 1fr;
+  }
+}

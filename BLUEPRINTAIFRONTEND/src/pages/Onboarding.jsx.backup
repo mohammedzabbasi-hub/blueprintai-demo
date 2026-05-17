@@ -1,0 +1,185 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  Sparkles,
+  ArrowRight,
+  ArrowLeft,
+  Store,
+  Tag,
+  DollarSign,
+  Target,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+const goals = [
+  "Increase sales",
+  "Improve creative performance",
+  "Find better creator styles",
+];
+
+const niches = [
+  "Beauty & Skincare",
+  "Health & Wellness",
+  "Electronics",
+  "Fashion",
+  "Home & Kitchen",
+  "Food & Beverage",
+  "Pet Products",
+  "Fitness",
+];
+
+export default function Onboarding() {
+  const [step, setStep] = useState(0);
+  const [storeName, setStoreName] = useState("");
+  const [niche, setNiche] = useState("");
+  const [price, setPrice] = useState("");
+  const [goal, setGoal] = useState("");
+
+  const stepsData = [
+    {
+      title: "What's your store name?",
+      icon: Store,
+      content: (
+        <div>
+          <Label htmlFor="store">Store Name</Label>
+          <Input
+            id="store"
+            placeholder="My TikTok Shop"
+            value={storeName}
+            onChange={(e) => setStoreName(e.target.value)}
+            className="mt-2"
+          />
+        </div>
+      ),
+    },
+    {
+      title: "What's your product niche?",
+      icon: Tag,
+      content: (
+        <div className="grid grid-cols-2 gap-3">
+          {niches.map((n) => (
+            <button
+              key={n}
+              onClick={() => setNiche(n)}
+              className={`p-3 rounded-lg border text-sm font-medium transition-all ${
+                niche === n
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "hover:border-muted-foreground/30"
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      ),
+    },
+    {
+      title: "What's your average product price?",
+      icon: DollarSign,
+      content: (
+        <div>
+          <Label htmlFor="price">Average Price (USD)</Label>
+          <Input
+            id="price"
+            type="number"
+            placeholder="29.99"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            className="mt-2"
+          />
+        </div>
+      ),
+    },
+    {
+      title: "What's your main goal?",
+      icon: Target,
+      content: (
+        <div className="space-y-3">
+          {goals.map((g) => (
+            <button
+              key={g}
+              onClick={() => setGoal(g)}
+              className={`w-full p-4 rounded-lg border text-left text-sm font-medium transition-all ${
+                goal === g
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "hover:border-muted-foreground/30"
+              }`}
+            >
+              {g}
+            </button>
+          ))}
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-lg">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 mb-4">
+            <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center">
+              <Sparkles className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <span className="font-bold">BlueprintAI</span>
+          </div>
+
+          <div className="flex gap-2 justify-center mb-6">
+            {stepsData.map((_, i) => (
+              <div
+                key={i}
+                className={`h-1.5 w-12 rounded-full transition-colors ${
+                  i <= step ? "gradient-primary" : "bg-muted"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl border shadow-card p-8">
+          <div className="flex items-center gap-3 mb-6">
+            {(() => {
+              const Icon = stepsData[step].icon;
+              return (
+                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Icon className="h-5 w-5 text-primary" />
+                </div>
+              );
+            })()}
+            <h2 className="text-xl font-semibold">{stepsData[step].title}</h2>
+          </div>
+
+          {stepsData[step].content}
+
+          <div className="flex justify-between mt-8">
+            <Button
+              variant="ghost"
+              onClick={() => setStep(Math.max(0, step - 1))}
+              disabled={step === 0}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
+
+            {step < stepsData.length - 1 ? (
+              <Button
+                className="gradient-primary text-primary-foreground"
+                onClick={() => setStep(step + 1)}
+              >
+                Continue <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            ) : (
+              <Button className="gradient-primary text-primary-foreground" asChild>
+                <Link to="/connect">
+                  Continue <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

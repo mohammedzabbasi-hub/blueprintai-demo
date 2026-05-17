@@ -1,0 +1,91 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+  width: 100%;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  background: white;
+  color: black;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Dashboard scrollbar utilities */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: #334155;
+  border-radius: 2px;
+}
+
+/* Login page text/input readability fix */
+.login-page,
+.login-page * {
+  color: #1f2937;
+}
+
+.login-page h1,
+.login-page h2,
+.login-page h3 {
+  color: #111827 !important;
+}
+
+.login-page label,
+.login-page .form-label {
+  color: #374151 !important;
+  opacity: 1 !important;
+}
+
+.login-page input {
+  color: #111827 !important;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  opacity: 1 !important;
+}
+
+.login-page input::placeholder {
+  color: #64748b !important;
+  opacity: 1 !important;
+}
+
+.login-page button,
+.login-page button * {
+  color: inherit;
+}
+
+.login-page .signin-button,
+.login-page button[type="submit"],
+.login-page button[type="submit"] * {
+  color: #ffffff !important;
+}
+
+/* Force login Welcome back title to match Email/Password color */
+.login-welcome-title {
+  color: #1f2937 !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #1f2937 !important;
+  text-shadow: none !important;
+}

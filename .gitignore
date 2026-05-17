@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+.env
+venv/
+BLUEPRINTAI/
+*.db
+*.sqlite3
+
+# Node
+node_modules/
+dist/
+.env.local
+.env.production
+
+# Uploads / generated files
+BLUEPRINTAIBACKEND/storage/uploads/
+BLUEPRINTAIBACKEND/video_analysis_engine/frames_output/
+BLUEPRINTAIBACKEND/.DS_Store
+.DS_Store
+
+# Large demo videos
+*.mp4
+
+# Mac files
+.DS_Store
+**/.DS_Store
+
+# Large uploaded videos / local analysis files
+*.mp4
+*.mov
+*.avi
+*.mkv
+BLUEPRINTAIBACKEND/storage/uploads/
+BLUEPRINTAIBACKEND/video_analysis_engine/uploads/
+BLUEPRINTAIBACKEND/video_analysis_engine/frames_output/

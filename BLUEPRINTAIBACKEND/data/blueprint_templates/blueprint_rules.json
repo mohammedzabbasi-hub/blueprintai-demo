@@ -1,0 +1,49 @@
+{
+  "thresholds": {
+    "low_ctr": 1.5,
+    "strong_ctr": 3.0,
+    "low_conversion_rate": 1.0,
+    "strong_conversion_rate": 3.0,
+    "low_roas": 1.5,
+    "strong_roas": 3.0,
+    "low_views": 1000
+  },
+  "rules": [
+    {
+      "metric": "ctr",
+      "condition": "low",
+      "problem": "Low click-through rate",
+      "diagnosis": "Your ads may not be stopping viewers quickly enough.",
+      "recommended_step": "Improve the first 3-second hook.",
+      "related_feature": "Video Analysis",
+      "priority": "High"
+    },
+    {
+      "metric": "conversion_rate",
+      "condition": "low",
+      "problem": "Low conversion rate",
+      "diagnosis": "People are clicking, but not enough viewers are buying.",
+      "recommended_step": "Improve product demonstration, offer clarity, and CTA strength.",
+      "related_feature": "Recommendations",
+      "priority": "High"
+    },
+    {
+      "metric": "roas",
+      "condition": "low",
+      "problem": "Low return on ad spend",
+      "diagnosis": "The shop may be spending without enough profitable return.",
+      "recommended_step": "Test stronger ad angles and creator styles before scaling spend.",
+      "related_feature": "Creator Comparison",
+      "priority": "High"
+    },
+    {
+      "metric": "views",
+      "condition": "low",
+      "problem": "Low reach",
+      "diagnosis": "Your creative may not be earning enough attention or distribution.",
+      "recommended_step": "Create multiple new short-form ad variations with stronger hooks.",
+      "related_feature": "Ad Briefs",
+      "priority": "Medium"
+    }
+  ]
+}

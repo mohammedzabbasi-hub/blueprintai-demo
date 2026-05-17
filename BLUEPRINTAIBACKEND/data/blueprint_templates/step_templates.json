@@ -1,0 +1,58 @@
+{
+  "default_steps": [
+    {
+      "step_number": 1,
+      "title": "Diagnose the Main Revenue Bottleneck",
+      "description": "Review the shop's CTR, conversion rate, ROAS, revenue, and creative performance to identify the biggest weakness.",
+      "action": "Use the dashboard to identify whether the main issue is attention, conversion, creator fit, or profitability.",
+      "priority": "High",
+      "related_feature": "Dashboard",
+      "expected_result": "The seller understands which part of the ad funnel needs the most improvement."
+    },
+    {
+      "step_number": 2,
+      "title": "Improve the Video Hook",
+      "description": "Strengthen the first few seconds of the ad so viewers immediately understand the product problem, benefit, or transformation.",
+      "action": "Create a hook that shows the product immediately, calls out the target customer, or demonstrates a clear before-and-after.",
+      "priority": "High",
+      "related_feature": "Video Analysis",
+      "expected_result": "Higher viewer retention and stronger click-through rate."
+    },
+    {
+      "step_number": 3,
+      "title": "Match the Best Creator Style",
+      "description": "Use creator comparison data to identify which creator type performs best for this shop.",
+      "action": "Prioritize the creator style with the strongest views, engagement, conversion, and revenue performance.",
+      "priority": "Medium",
+      "related_feature": "Creator Comparison",
+      "expected_result": "Better creative fit and improved ad performance."
+    },
+    {
+      "step_number": 4,
+      "title": "Generate a New Ad Brief",
+      "description": "Turn the diagnosis into a specific TikTok Shop ad concept with a hook, product demo, CTA, and creator direction.",
+      "action": "Use the ad brief generator to create 2-3 new ad variations based on the strongest pattern.",
+      "priority": "High",
+      "related_feature": "Ad Briefs",
+      "expected_result": "The seller has a clear creative plan for the next ad test."
+    },
+    {
+      "step_number": 5,
+      "title": "Launch Small Creative Tests",
+      "description": "Test multiple creative variations before scaling the winning version.",
+      "action": "Launch 3 short-form ad variations using different hooks, CTAs, or creator styles.",
+      "priority": "Medium",
+      "related_feature": "Recommendations",
+      "expected_result": "The seller can identify which creative direction performs best."
+    },
+    {
+      "step_number": 6,
+      "title": "Track Results and Repeat",
+      "description": "Compare the new ads against the previous baseline using CTR, conversion rate, ROAS, and revenue.",
+      "action": "Keep the strongest-performing element and replace the weakest element in the next test cycle.",
+      "priority": "Medium",
+      "related_feature": "Dashboard",
+      "expected_result": "Continuous improvement in ad performance and shop revenue."
+    }
+  ]
+}

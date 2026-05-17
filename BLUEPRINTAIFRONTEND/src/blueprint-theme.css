@@ -1,0 +1,342 @@
+/* ================================
+   BlueprintAI Global Dark SaaS Theme
+   Applies to existing pages without replacing logic
+   ================================ */
+
+:root {
+  --bp-bg: #0a0f1e;
+  --bp-card: #0d1526;
+  --bp-card-soft: #111b31;
+  --bp-border: rgba(255, 255, 255, 0.07);
+  --bp-border-strong: rgba(255, 255, 255, 0.12);
+  --bp-text: #f8fafc;
+  --bp-muted: #94a3b8;
+  --bp-muted-2: #64748b;
+  --bp-blue: #38bdf8;
+  --bp-blue-dark: #0ea5e9;
+  --bp-purple: #6366f1;
+  --bp-green: #34d399;
+  --bp-amber: #f59e0b;
+  --bp-rose: #fb7185;
+}
+
+/* overall app background */
+body {
+  background: var(--bp-bg) !important;
+  color: var(--bp-text) !important;
+}
+
+/* main page areas */
+main,
+.page,
+.dashboard-page,
+.creative-library-page,
+.video-analysis-page,
+.ad-briefs-page,
+.recommendations-page,
+.creators-page,
+.connect-shop-page,
+.settings-page {
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.08), transparent 32%),
+    radial-gradient(circle at top right, rgba(99, 102, 241, 0.08), transparent 30%),
+    var(--bp-bg) !important;
+  color: var(--bp-text) !important;
+}
+
+/* common page containers */
+main > div,
+.page-container,
+.content-container,
+.dashboard-container,
+.creative-library-container,
+.upload-container,
+.settings-container {
+  color: var(--bp-text);
+}
+
+/* headings */
+h1,
+h2,
+h3,
+h4 {
+  color: var(--bp-text) !important;
+  letter-spacing: -0.03em;
+}
+
+h1 {
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 850;
+}
+
+h2 {
+  font-weight: 800;
+}
+
+p,
+span,
+label {
+  color: inherit;
+}
+
+/* muted text */
+.text-muted,
+.subtitle,
+.description,
+small,
+.page-subtitle {
+  color: var(--bp-muted) !important;
+}
+
+/* cards / panels */
+.card,
+.panel,
+.stat-card,
+.metric-card,
+.creative-card,
+.creator-card,
+.recommendation-card,
+.brief-card,
+.upload-card,
+.settings-card,
+.connect-card,
+.analysis-card,
+div[class*="card"],
+div[class*="Card"],
+section,
+article {
+  background: var(--bp-card) !important;
+  border: 1px solid var(--bp-border) !important;
+  border-radius: 18px !important;
+  color: var(--bp-text) !important;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.22) !important;
+}
+
+/* card hover */
+.card:hover,
+.creative-card:hover,
+.creator-card:hover,
+.recommendation-card:hover,
+.brief-card:hover,
+div[class*="card"]:hover,
+div[class*="Card"]:hover {
+  border-color: var(--bp-border-strong) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.32) !important;
+}
+
+/* tables */
+table {
+  width: 100%;
+  background: var(--bp-card) !important;
+  border: 1px solid var(--bp-border) !important;
+  border-radius: 16px !important;
+  overflow: hidden;
+  color: var(--bp-text) !important;
+}
+
+thead {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+th {
+  color: var(--bp-muted-2) !important;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+td {
+  color: #dbeafe !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+tr {
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+tr:hover {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+/* inputs */
+input,
+select,
+textarea {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid var(--bp-border) !important;
+  color: var(--bp-text) !important;
+  border-radius: 12px !important;
+  outline: none !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #64748b !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(56, 189, 248, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12) !important;
+}
+
+/* buttons */
+button,
+.button,
+.btn,
+a[role="button"] {
+  border-radius: 12px !important;
+  font-weight: 700;
+  transition: all 0.18s ease;
+}
+
+button:not(:disabled),
+.button,
+.btn {
+  cursor: pointer;
+}
+
+button:hover:not(:disabled),
+.button:hover,
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+/* primary buttons */
+button[type="submit"],
+.primary-button,
+.btn-primary,
+.generate-button,
+.upload-button,
+.analyze-button,
+.save-button,
+.connect-button {
+  background: linear-gradient(135deg, var(--bp-blue), var(--bp-purple)) !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: 0 14px 30px rgba(56, 189, 248, 0.22) !important;
+}
+
+/* secondary buttons */
+.secondary-button,
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: var(--bp-text) !important;
+  border: 1px solid var(--bp-border) !important;
+}
+
+/* badges */
+.badge,
+.status,
+.tag,
+.chip,
+.pill,
+span[class*="badge"],
+span[class*="Badge"] {
+  border-radius: 999px !important;
+  background: rgba(56, 189, 248, 0.12) !important;
+  color: var(--bp-blue) !important;
+  border: 1px solid rgba(56, 189, 248, 0.18) !important;
+  font-weight: 700;
+}
+
+/* sidebar compatibility */
+aside,
+.sidebar,
+.app-sidebar {
+  background: #0d1526 !important;
+  border-color: var(--bp-border) !important;
+  color: var(--bp-text) !important;
+}
+
+aside a,
+.sidebar a,
+.app-sidebar a {
+  color: var(--bp-muted) !important;
+}
+
+aside a:hover,
+.sidebar a:hover,
+.app-sidebar a:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: var(--bp-text) !important;
+}
+
+/* video/upload page polish */
+input[type="file"] {
+  background: rgba(255, 255, 255, 0.04) !important;
+  padding: 12px !important;
+}
+
+.upload-area,
+.dropzone,
+.file-upload,
+.video-upload {
+  background: var(--bp-card) !important;
+  border: 2px dashed rgba(56, 189, 248, 0.3) !important;
+  border-radius: 24px !important;
+  padding: 36px !important;
+}
+
+/* scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 999px;
+}
+
+/* prevent harsh white blocks from old pages */
+.bg-white,
+[class*="bg-white"] {
+  background-color: var(--bp-card) !important;
+}
+
+.text-black,
+[class*="text-black"] {
+  color: var(--bp-text) !important;
+}
+
+.text-gray-500,
+.text-gray-600,
+.text-slate-500,
+.text-slate-600 {
+  color: var(--bp-muted) !important;
+}
+
+.border-gray-200,
+.border-gray-300,
+.border-slate-200,
+.border-slate-300 {
+  border-color: var(--bp-border) !important;
+}
+
+/* Remove search bar from main shop dashboard only */
+.dashboard-page input[placeholder*="Search"],
+.dashboard-page input[placeholder*="search"] {
+  display: none !important;
+}
+
+.dashboard-page input[placeholder*="Search"]::placeholder,
+.dashboard-page input[placeholder*="search"]::placeholder {
+  color: transparent !important;
+}
+
+/* Hide the search box wrapper if the browser supports :has */
+.dashboard-page div:has(> input[placeholder*="Search"]),
+.dashboard-page div:has(> input[placeholder*="search"]) {
+  display: none !important;
+}

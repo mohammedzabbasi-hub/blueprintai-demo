@@ -1,0 +1,1 @@
+from video_analysis_engine.analysis import run_full_video_analysis
