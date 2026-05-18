@@ -8,7 +8,6 @@ const links = [
   { to: "/recommendations", label: "Recommendations" },
   { to: "/revenue-blueprint", label: "Blueprint Creation" },
   { to: "/creators", label: "Creators" },
-  { to: "/connect-shop", label: "Connect Shop" },
   { to: "/activity-log", label: "Activity Log" },
   { to: "/settings", label: "Settings" },
 ];

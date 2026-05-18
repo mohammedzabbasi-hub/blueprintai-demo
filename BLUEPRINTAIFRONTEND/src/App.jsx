@@ -9,7 +9,6 @@ import AdBriefs from "./pages/AdBriefs";
 import Recommendations from "./pages/Recommendations";
 import Settings from "./pages/Settings";
 import ActivityLog from "./pages/ActivityLog";
-import ConnectShop from "./pages/ConnectShop";
 import Login from "./pages/Login";
 import Onboarding from "./pages/Onboarding";
 import Creators from "./pages/Creators";
@@ -35,8 +34,8 @@ export default function App() {
           <Route path="/revenue-blueprint" element={<RevenueBlueprint />} />
           <Route path="/creators" element={<Creators />} />
           <Route path="/creators/:creatorId" element={<CreatorDetail />} />
-          <Route path="/connect-shop" element={<ConnectShop />} />
-          <Route path="/connect" element={<ConnectShop />} />
+          <Route path="/connect-shop" element={<Navigate to="/settings" replace />} />
+          <Route path="/connect" element={<Navigate to="/settings" replace />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/activity-log" element={<ActivityLog />} />
         </Route>

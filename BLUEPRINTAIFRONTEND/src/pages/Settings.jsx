@@ -1,268 +1,348 @@
-import { useState } from "react";
-import {
-  Settings as SettingsIcon,
-  Store,
-  Video,
-  Library,
-  Activity,
-  CheckCircle2,
-  Circle,
-  User,
-  ChevronDown,
-  LogOut,
-  Sparkles,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { getSelectedShopId, getStoredShopName, setSelectedShop } from "../lib/shopSession";
+import { userCanAccessShop } from "../services/demoAuth";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+
+const FALLBACK_SHOPS = [
+  { id: "1", shop_name: "GlowLab Beauty", category: "Beauty & Personal Care", region: "US", creatives: 17, creators: 4 },
+  { id: "2", shop_name: "FitPulse Gear", category: "Fitness Accessories", region: "US", creatives: 17, creators: 4 },
+  { id: "3", shop_name: "HomeEase Finds", category: "Home & Kitchen", region: "US", creatives: 17, creators: 4 },
+  { id: "4", shop_name: "StyleNest Apparel", category: "Fashion", region: "US", creatives: 15, creators: 4 },
+  { id: "5", shop_name: "TechTok Gadgets", category: "Consumer Electronics", region: "US", creatives: 14, creators: 4 },
+];
+
+function normalizeShop(shop, index) {
+  const rawId = shop.id || shop.shop_id || shop.shopId || String(index + 1);
+  const numericId = String(rawId).includes("demo_shop_")
+    ? String(Number(String(rawId).replace("demo_shop_", "")))
+    : String(rawId);
+
+  return {
+    ...shop,
+    id: numericId,
+    shop_name: shop.shop_name || shop.name || `Shop ${numericId}`,
+    category: shop.category || shop.industry || "TikTok Shop",
+    region: shop.region || "US",
+    creatives: shop.creatives_count || shop.total_creatives || shop.creatives || shop.summary?.total_creatives || 0,
+    creators: shop.creators_count || shop.total_creators || shop.creators || shop.summary?.total_creators || 0,
+  };
+}
 
 export default function Settings() {
-  const [autoSave, setAutoSave] = useState(true);
-  const [emailSummaries, setEmailSummaries] = useState(false);
-  const [depth, setDepth] = useState("Standard Analysis");
+  const navigate = useNavigate();
+  const [shops, setShops] = useState([]);
+  const [selectedShopId, setSelectedShopId] = useState(getSelectedShopId());
+  const [selectedShopName, setSelectedShopName] = useState(getStoredShopName());
+  const [shopModalOpen, setShopModalOpen] = useState(false);
+  const [loadingShops, setLoadingShops] = useState(false);
 
-  const handleLogout = () => {
+  useEffect(() => {
+    async function loadShops() {
+      setLoadingShops(true);
+
+      try {
+        const res = await fetch(`${API_BASE}/demo/shops`);
+        if (!res.ok) throw new Error("Failed to load shops");
+
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : data.shops || [];
+        const normalized = list.map(normalizeShop).filter((shop) => userCanAccessShop(shop.id));
+
+        setShops(normalized.length ? normalized : FALLBACK_SHOPS);
+      } catch {
+        setShops(FALLBACK_SHOPS);
+      } finally {
+        setLoadingShops(false);
+      }
+    }
+
+    loadShops();
+  }, []);
+
+  const activeShop = useMemo(() => {
+    return shops.find((shop) => String(shop.id) === String(selectedShopId));
+  }, [shops, selectedShopId]);
+
+  function handleSelectShop(shop) {
+    setSelectedShop(shop);
+    setSelectedShopId(String(shop.id));
+    setSelectedShopName(shop.shop_name);
+    setShopModalOpen(false);
+  }
+
+  function handleLogout() {
     localStorage.removeItem("token");
     localStorage.removeItem("access_token");
     localStorage.removeItem("authToken");
     localStorage.removeItem("user");
-    window.location.href = "/login";
-  };
+    localStorage.removeItem("demoUser");
+    localStorage.removeItem("isAuthenticated");
+    navigate("/login");
+  }
 
   return (
-    <main className="min-h-screen bg-[#08111f] px-6 py-10 text-white">
-      <div className="mx-auto w-full max-w-6xl">
-        <header className="mb-10 flex items-start gap-4">
-          <div className="grid h-14 w-14 place-items-center rounded-2xl border border-cyan-400/25 bg-cyan-400/10 shadow-lg">
-            <SettingsIcon className="h-6 w-6 text-cyan-300" />
+    <div className="min-h-screen bg-[#07111f] text-white px-8 py-10">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-10 flex items-center gap-5">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-500/10 text-3xl text-cyan-300">
+            ⚙
           </div>
-
           <div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-white">
-              Settings
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm text-slate-400">
-              Manage your BlueprintAI workspace, demo shop connection, and video analysis preferences.
+            <h1 className="text-5xl font-black tracking-tight">Settings</h1>
+            <p className="mt-2 text-slate-400">
+              Manage your BlueprintAI workspace, active shop, and video analysis preferences.
             </p>
           </div>
-        </header>
+        </div>
 
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <Section icon={Sparkles} title="Workspace Profile" description="Identity and goals for this workspace.">
-            <Field label="Workspace Name" value="BlueprintAI" />
-            <Field label="Main Platform" value="TikTok Shop" />
-            <Field label="Primary Goal" value="Creative Intelligence" />
-            <Field label="Account Type" value="MVP Testing" />
-          </Section>
+        <div className="grid gap-6 xl:grid-cols-2">
+          <section className="rounded-3xl border border-slate-800 bg-[#0b1322] p-7">
+            <div className="mb-8 flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-300">
+                ✨
+              </div>
+              <div>
+                <h2 className="text-2xl font-black">Workspace Profile</h2>
+                <p className="text-slate-400">Identity and goals for this workspace.</p>
+              </div>
+            </div>
 
-          <Section icon={Store} title="Connected Shop" description="The demo shop powering your creative analysis.">
-            <div className="rounded-xl border border-slate-700 bg-[#111c2e]/80 p-4">
-              <div className="flex items-center justify-between">
+            <div className="space-y-5">
+              <div className="flex justify-between border-b border-slate-800 pb-4">
+                <span className="text-slate-400">Workspace Name</span>
+                <span className="font-bold">BlueprintAI</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-800 pb-4">
+                <span className="text-slate-400">Main Platform</span>
+                <span className="font-bold">TikTok Shop</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-800 pb-4">
+                <span className="text-slate-400">Primary Goal</span>
+                <span className="font-bold">Creative Intelligence</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Account Type</span>
+                <span className="font-bold">MVP Testing</span>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-slate-800 bg-[#0b1322] p-7">
+            <div className="mb-8 flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-300">
+                🏬
+              </div>
+              <div>
+                <h2 className="text-2xl font-black">Active Shop</h2>
+                <p className="text-slate-400">The shop currently powering your account data.</p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-700 bg-slate-950/40 p-5">
+              <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-semibold text-white">GlowLab Beauty</p>
-                  <p className="text-xs text-slate-400">Demo TikTok Shop</p>
+                  <h3 className="text-xl font-black">{activeShop?.shop_name || selectedShopName}</h3>
+                  <p className="mt-1 text-slate-400">
+                    {activeShop?.category || "Demo TikTok Shop"} · {activeShop?.region || "US"}
+                  </p>
                 </div>
-                <Badge type="success">Connected</Badge>
+                <span className="rounded-full bg-emerald-500/15 px-4 py-2 text-sm font-black text-emerald-300">
+                  Connected
+                </span>
               </div>
             </div>
 
             <button
-              onClick={() => (window.location.href = "/connect-shop")}
-              className="mt-4 rounded-xl bg-cyan-400 px-4 py-2 text-sm font-bold text-[#08111f] transition hover:bg-cyan-300"
+              onClick={() => setShopModalOpen(true)}
+              className="mt-5 rounded-2xl bg-cyan-500 px-6 py-3 font-black text-white transition hover:bg-cyan-400"
             >
-              Change Demo Shop
+              Manage Shops
             </button>
 
-            <p className="mt-3 text-xs text-slate-500">
-              Demo mode only. No real TikTok Shop account is being accessed yet.
+            <p className="mt-4 text-sm text-slate-400">
+              One account can manage multiple shops, but BlueprintAI personalizes pages around one active shop at a time.
             </p>
-          </Section>
+          </section>
 
-          <Section icon={Video} title="Video Analysis Preferences" description="Control how videos are processed.">
-            <label className="mb-2 block text-xs font-medium text-slate-400">
-              Analysis Depth
-            </label>
-
-            <div className="relative">
-              <select
-                value={depth}
-                onChange={(e) => setDepth(e.target.value)}
-                className="w-full appearance-none rounded-xl border border-slate-700 bg-[#111c2e] px-4 py-3 pr-10 text-sm text-white outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-              >
-                <option>Standard Analysis</option>
-                <option>Deep Analysis</option>
-                <option>Quick Scan</option>
-              </select>
-
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <section className="rounded-3xl border border-slate-800 bg-[#0b1322] p-7">
+            <div className="mb-8 flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-300">
+                🎥
+              </div>
+              <div>
+                <h2 className="text-2xl font-black">Video Analysis Preferences</h2>
+                <p className="text-slate-400">Control how videos are processed.</p>
+              </div>
             </div>
 
-            <div className="mt-4 divide-y divide-slate-700/70">
-              <ToggleRow
-                label="Auto-save analyzed videos"
-                description="Save results to the Creative Library automatically."
-                checked={autoSave}
-                onChange={setAutoSave}
-              />
-              <ToggleRow
-                label="Email summaries"
-                description="Get a weekly digest of new insights."
-                checked={emailSummaries}
-                onChange={setEmailSummaries}
-              />
-            </div>
-          </Section>
+            <div className="space-y-6">
+              <label className="block">
+                <span className="mb-2 block text-slate-400">Analysis Depth</span>
+                <select className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-4 font-bold outline-none">
+                  <option>Standard Analysis</option>
+                  <option>Deep Creative Breakdown</option>
+                  <option>Fast Summary</option>
+                </select>
+              </label>
 
-          <Section icon={Library} title="Creative Library Defaults" description="Defaults applied to newly analyzed videos.">
-            <Field label="Default Product Label" value="Unknown Product" />
-            <Field label="Default Creator Label" value="Uploaded Creator" />
-            <Field label="Default Source" value="Uploaded Video" />
-            <Field label="Default Sort" value="Newest First" />
-          </Section>
-
-          <Section icon={Activity} title="App Status" description="Live status of BlueprintAI services.">
-            <StatusRow label="Backend" status="Connected" type="success" />
-            <StatusRow label="Video Analysis" status="Working" type="success" />
-            <StatusRow label="Speech-to-Text" status="Enabled" type="info" />
-            <StatusRow label="Creative Library" status="In Progress" type="warn" />
-          </Section>
-
-          <Section icon={CheckCircle2} title="MVP Checklist" description="Track progress toward the demo milestone.">
-            <ul className="divide-y divide-slate-700/60">
-              <ChecklistItem label="Upload videos" done />
-              <ChecklistItem label="Generate analysis" done />
-              <ChecklistItem label="Clean results page" done />
-              <ChecklistItem label="Save to Creative Library" done={false} />
-              <ChecklistItem label="View saved creative details" done={false} />
-              <ChecklistItem label="Connect TikTok Shop data" done={false} />
-            </ul>
-          </Section>
-
-          <Section icon={User} title="Account" description="Signed in to BlueprintAI.">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-full border border-slate-700 bg-cyan-400/10 text-sm font-bold text-cyan-300">
-                  Y
-                </div>
-
+              <div className="flex items-center justify-between border-b border-slate-800 pb-5">
                 <div>
-                  <p className="text-sm font-medium text-white">you@blueprintai.app</p>
-                  <p className="text-xs text-slate-400">Owner · MVP Testing</p>
+                  <p className="font-black">Auto-save analyzed videos</p>
+                  <p className="text-sm text-slate-400">Save results to the Creative Library automatically.</p>
+                </div>
+                <div className="h-7 w-14 rounded-full bg-cyan-500 p-1">
+                  <div className="ml-auto h-5 w-5 rounded-full bg-slate-950" />
                 </div>
               </div>
 
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-black">Email summaries</p>
+                  <p className="text-sm text-slate-400">Get a weekly digest of new insights.</p>
+                </div>
+                <div className="h-7 w-14 rounded-full bg-slate-700 p-1">
+                  <div className="h-5 w-5 rounded-full bg-slate-950" />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-slate-800 bg-[#0b1322] p-7">
+            <div className="mb-8 flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-300">
+                ▥
+              </div>
+              <div>
+                <h2 className="text-2xl font-black">Creative Library Defaults</h2>
+                <p className="text-slate-400">Defaults applied to newly analyzed videos.</p>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <div className="flex justify-between border-b border-slate-800 pb-4">
+                <span className="text-slate-400">Default Product Label</span>
+                <span className="font-bold">Unknown Product</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-800 pb-4">
+                <span className="text-slate-400">Default Creator Label</span>
+                <span className="font-bold">Uploaded Creator</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-800 pb-4">
+                <span className="text-slate-400">Default Source</span>
+                <span className="font-bold">Uploaded Video</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Default Sort</span>
+                <span className="font-bold">Newest First</span>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-slate-800 bg-[#0b1322] p-7 xl:col-span-2">
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-black">Account</h2>
+                <p className="text-slate-400">Signed in to BlueprintAI.</p>
+              </div>
               <button
                 onClick={handleLogout}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-[#111c2e] px-4 py-2 text-sm font-medium text-white transition hover:border-cyan-400/60 hover:bg-[#14233a]"
+                className="rounded-2xl border border-slate-700 px-6 py-3 font-black text-slate-300 hover:border-red-400 hover:text-red-300"
               >
-                <LogOut className="h-4 w-4" />
                 Logout
               </button>
             </div>
-          </Section>
+          </section>
         </div>
-
-        <footer className="mt-10 text-center text-xs text-slate-500">
-          BlueprintAI · MVP build
-        </footer>
-      </div>
-    </main>
-  );
-}
-
-function Section({ icon: Icon, title, description, children }) {
-  return (
-    <section className="rounded-3xl border border-slate-700/70 bg-[#0b1322]/95 p-6 shadow-2xl shadow-black/20">
-      <header className="mb-5 flex items-start gap-3">
-        <div className="grid h-10 w-10 place-items-center rounded-xl border border-cyan-400/25 bg-cyan-400/10 text-cyan-300">
-          <Icon className="h-5 w-5" />
-        </div>
-
-        <div>
-          <h2 className="text-base font-semibold tracking-tight text-white">
-            {title}
-          </h2>
-          {description && <p className="mt-1 text-xs text-slate-400">{description}</p>}
-        </div>
-      </header>
-
-      {children}
-    </section>
-  );
-}
-
-function Field({ label, value }) {
-  return (
-    <div className="flex items-center justify-between gap-4 border-b border-slate-700/60 py-3 last:border-0">
-      <span className="text-sm text-slate-400">{label}</span>
-      <span className="text-sm font-medium text-white">{value}</span>
-    </div>
-  );
-}
-
-function Toggle({ checked, onChange }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors ${
-        checked ? "border-cyan-400/50 bg-cyan-400" : "border-slate-600 bg-slate-700"
-      }`}
-    >
-      <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-          checked ? "translate-x-6" : "translate-x-1"
-        }`}
-      />
-    </button>
-  );
-}
-
-function ToggleRow({ label, description, checked, onChange }) {
-  return (
-    <div className="flex items-center justify-between gap-4 py-4">
-      <div>
-        <p className="text-sm font-medium text-white">{label}</p>
-        {description && <p className="text-xs text-slate-400">{description}</p>}
       </div>
 
-      <Toggle checked={checked} onChange={onChange} />
-    </div>
-  );
-}
+      {shopModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
+          <div className="max-h-[88vh] w-full max-w-5xl overflow-y-auto rounded-[28px] border border-slate-700 bg-[#0b1322] p-7 shadow-2xl">
+            <div className="mb-7 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-bold uppercase tracking-[0.25em] text-cyan-300">Shop Management</p>
+                <h2 className="mt-2 text-3xl font-black">Choose Active Shop</h2>
+                <p className="mt-2 text-slate-400">
+                  Switching shops updates the data shown across Dashboard, Recommendations, Creators, Ad Briefs, and Blueprint Creation.
+                </p>
+              </div>
 
-function StatusRow({ label, status, type }) {
-  return (
-    <div className="flex items-center justify-between border-b border-slate-700/60 py-3 last:border-0">
-      <span className="text-sm text-white">{label}</span>
-      <Badge type={type}>{status}</Badge>
-    </div>
-  );
-}
+              <button
+                onClick={() => setShopModalOpen(false)}
+                className="rounded-xl border border-slate-700 px-4 py-2 font-black text-slate-300 hover:border-cyan-400"
+              >
+                ✕
+              </button>
+            </div>
 
-function Badge({ children, type = "success" }) {
-  const styles = {
-    success: "bg-emerald-400/15 text-emerald-300 border-emerald-400/30",
-    info: "bg-cyan-400/15 text-cyan-300 border-cyan-400/30",
-    warn: "bg-yellow-400/15 text-yellow-300 border-yellow-400/30",
-  };
+            {loadingShops ? (
+              <div className="rounded-2xl border border-slate-800 p-6 text-slate-300">Loading shops...</div>
+            ) : (
+              <div className="grid gap-5 md:grid-cols-2">
+                {shops.map((shop) => {
+                  const isActive = String(shop.id) === String(selectedShopId);
 
-  return (
-    <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${styles[type]}`}>
-      {children}
-    </span>
-  );
-}
+                  return (
+                    <button
+                      key={shop.id}
+                      onClick={() => handleSelectShop(shop)}
+                      className={`rounded-3xl border p-5 text-left transition ${
+                        isActive
+                          ? "border-cyan-400 bg-cyan-950/25"
+                          : "border-slate-800 bg-slate-950/40 hover:border-cyan-700"
+                      }`}
+                    >
+                      <div className="mb-5 flex items-start justify-between gap-4">
+                        <div>
+                          <h3 className="text-2xl font-black">{shop.shop_name}</h3>
+                          <p className="mt-1 text-slate-400">
+                            {shop.category} · {shop.region}
+                          </p>
+                        </div>
 
-function ChecklistItem({ label, done }) {
-  return (
-    <li className="flex items-center gap-3 py-3">
-      {done ? (
-        <CheckCircle2 className="h-4 w-4 text-cyan-300" />
-      ) : (
-        <Circle className="h-4 w-4 text-slate-500" />
+                        {isActive && (
+                          <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-sm font-black text-emerald-300">
+                            Active
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-2xl border border-slate-800 p-4">
+                          <p className="text-sm text-slate-400">Creatives</p>
+                          <p className="mt-1 text-xl font-black">{shop.creatives}</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-800 p-4">
+                          <p className="text-sm text-slate-400">Creators</p>
+                          <p className="mt-1 text-xl font-black">{shop.creators}</p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="mt-7 flex flex-wrap gap-4">
+              <button
+                onClick={() => alert("Real TikTok Shop OAuth connection will be added here later.")}
+                className="rounded-2xl bg-cyan-500 px-6 py-3 font-black text-white hover:bg-cyan-400"
+              >
+                + Connect New Shop
+              </button>
+
+              <button
+                onClick={() => setShopModalOpen(false)}
+                className="rounded-2xl border border-slate-700 px-6 py-3 font-black text-slate-300 hover:border-cyan-400"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
       )}
-
-      <span className={`text-sm ${done ? "text-white" : "text-slate-400"}`}>
-        {label}
-      </span>
-    </li>
+    </div>
   );
 }
