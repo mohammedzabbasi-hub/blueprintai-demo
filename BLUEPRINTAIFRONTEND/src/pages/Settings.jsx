@@ -25,8 +25,8 @@ function normalizeShop(shop, index) {
     shop_name: shop.shop_name || shop.name || `Shop ${numericId}`,
     category: shop.category || shop.industry || "TikTok Shop",
     region: shop.region || "US",
-    creatives: shop.creatives_count || shop.total_creatives || shop.creatives || shop.summary?.total_creatives || 0,
-    creators: shop.creators_count || shop.total_creators || shop.creators || shop.summary?.total_creators || 0,
+    creatives: shop.creative_count || shop.creatives_count || shop.total_creatives || shop.creatives || shop.summary?.total_creatives || 0,
+    creators: shop.creator_count || shop.creators_count || shop.total_creators || shop.creators || shop.summary?.total_creators || 0,
   };
 }
 
@@ -48,7 +48,7 @@ export default function Settings() {
 
         const data = await res.json();
         const list = Array.isArray(data) ? data : data.shops || [];
-        const normalized = list.map(normalizeShop).filter((shop) => userCanAccessShop(shop.id));
+        const normalized = list.map(normalizeShop);
 
         setShops(normalized.length ? normalized : FALLBACK_SHOPS);
       } catch {
