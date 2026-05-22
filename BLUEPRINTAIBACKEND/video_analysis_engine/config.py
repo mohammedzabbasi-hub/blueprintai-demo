@@ -38,3 +38,7 @@ DELETE_TEMP_FILES_AFTER_ANALYSIS = True
 
 def validate_video_extension(filename: str) -> bool:
     return Path(filename).suffix.lower() in ALLOWED_VIDEO_EXTENSIONS
+
+# AI config from environment variables only
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+ANALYSIS_MODEL = os.getenv("ANALYSIS_MODEL", "gemini-2.5-flash-lite")
