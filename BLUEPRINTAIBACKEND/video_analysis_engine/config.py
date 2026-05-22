@@ -19,8 +19,7 @@ DEFAULT_MAX_FRAMES = 12
 
 AUDIO_FORMAT = "wav"
 
-# Gemini config
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyAMAJ7LMBXnGk0WVwzbmWGvfw3DJ6ItQNM")
+# Gemini confi GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyBmrLYFZDsOZ_zQsRjFg9n28RnWNkZPkzg")
 ANALYSIS_MODEL = os.getenv("ANALYSIS_MODEL", "gemini-2.5-flash-lite")
 
 # Google Speech-to-Text config
