@@ -71,3 +71,16 @@ export async function clearActivityLogs() {
   if (!res.ok) throw new Error("Failed to clear activity logs");
   return res.json();
 }
+
+
+export async function logActivity(activity) {
+  return createActivityLog(activity);
+}
+
+export async function getActivityLog(options = {}) {
+  return getActivityLogs(options);
+}
+
+export async function clearActivityLog() {
+  return clearActivityLogs();
+}
