@@ -3,6 +3,9 @@ import os
 import re
 from pathlib import Path
 from typing import Dict, Any, List
+# Ensure SQLAlchemy relationship models are registered
+import models.video_analysis
+
 
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
