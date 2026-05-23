@@ -1,3 +1,4 @@
+import { API_BASE, getSelectedShopId } from "../lib/accountContext";
 import { useState } from "react";
 import { logActivity } from "../services/activityLog";
 
@@ -413,6 +414,36 @@ function VideoAdBreakdown({ result, file }) {
   );
 }
 
+
+async function saveCreativeToShop(analysisResult) {
+  const shopId = getSelectedShopId();
+
+  try {
+    await fetch(`${API_BASE}/personalized/creatives`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        shop_id: shopId,
+        title: analysisResult?.title || analysisResult?.filename || "Uploaded Creative",
+        product: analysisResult?.product || "Uploaded Product",
+        creator: "Uploaded by user",
+        video_url: analysisResult?.video_url || analysisResult?.videoUrl || "",
+        thumbnail: analysisResult?.thumbnail || "",
+        insight: analysisResult?.insight || analysisResult?.summary || "",
+        transcript: analysisResult?.transcript || "",
+        transcript_summary: analysisResult?.transcript_summary || analysisResult?.summary || "",
+        hook_type: analysisResult?.hook_type || analysisResult?.hook || "",
+        creator_type: analysisResult?.creator_type || "",
+        humor_style: analysisResult?.humor_style || "",
+        delivery_style: analysisResult?.delivery_style || "",
+        score: analysisResult?.score || analysisResult?.creative_score || 0,
+      }),
+    });
+  } catch (err) {
+    console.warn("Could not save creative to shop:", err);
+  }
+}
+
 export default function VideoAnalysis() {
   const [file, setFile] = useState(null);
   const [result, setResult] = useState(null);
@@ -464,6 +495,7 @@ export default function VideoAnalysis() {
       }
 
       setResult(data);
+      await saveCreativeToShop(data);
 
       logActivity(
         "video_analysis",

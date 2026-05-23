@@ -3,6 +3,7 @@ from routes.onboarding import router as onboarding_router
 from api.routes import onboarding
 from fastapi.middleware.cors import CORSMiddleware
 from routes.login import router as login_router
+from routes.personalized import router as personalized_router
 
 from routes.video_analysis import router as video_analysis_router
 from routes.activity_log import router as activity_log_router
@@ -80,3 +81,5 @@ app.include_router(activity_log_router)
 app.include_router(onboarding_router)
 
 app.include_router(login_router)
+
+app.include_router(personalized_router)

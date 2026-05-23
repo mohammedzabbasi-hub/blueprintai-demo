@@ -1,0 +1,219 @@
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import inspect, text
+from db.database import engine
+from datetime import datetime
+
+router = APIRouter(prefix="/personalized", tags=["personalized"])
+
+
+class SaveCreativeRequest(BaseModel):
+    shop_id: int
+    title: str | None = None
+    product: str | None = None
+    creator: str | None = None
+    video_url: str | None = None
+    thumbnail: str | None = None
+    insight: str | None = None
+    transcript: str | None = None
+    transcript_summary: str | None = None
+    hook_type: str | None = None
+    creator_type: str | None = None
+    humor_style: str | None = None
+    delivery_style: str | None = None
+    score: float | None = None
+
+
+def table_exists(table_name):
+    return table_name in inspect(engine).get_table_names()
+
+
+def columns(table_name):
+    if not table_exists(table_name):
+        return set()
+    return {c["name"] for c in inspect(engine).get_columns(table_name)}
+
+
+def insert_dynamic(conn, table_name, values):
+    actual_cols = columns(table_name)
+    filtered = {k: v for k, v in values.items() if k in actual_cols and v is not None}
+
+    if not filtered:
+        raise HTTPException(status_code=500, detail=f"No matching columns for {table_name}")
+
+    col_sql = ", ".join(filtered.keys())
+    bind_sql = ", ".join([f":{k}" for k in filtered.keys()])
+
+    result = conn.execute(
+        text(f"INSERT INTO {table_name} ({col_sql}) VALUES ({bind_sql})"),
+        filtered,
+    )
+    return result.lastrowid
+
+
+def fetch_all(conn, sql, params=None):
+    return [dict(row) for row in conn.execute(text(sql), params or {}).mappings().all()]
+
+
+@router.get("/shop-state")
+def get_shop_state(shop_id: int):
+    with engine.begin() as conn:
+        creatives_count = 0
+        recommendations_count = 0
+        briefs_count = 0
+        activity_count = 0
+        creators_count = 0
+
+        if table_exists("creatives") and "shop_id" in columns("creatives"):
+            creatives_count = conn.execute(
+                text("SELECT COUNT(*) FROM creatives WHERE shop_id = :shop_id"),
+                {"shop_id": shop_id},
+            ).scalar() or 0
+
+        if table_exists("recommendations") and "shop_id" in columns("recommendations"):
+            recommendations_count = conn.execute(
+                text("SELECT COUNT(*) FROM recommendations WHERE shop_id = :shop_id"),
+                {"shop_id": shop_id},
+            ).scalar() or 0
+
+        if table_exists("briefs") and "shop_id" in columns("briefs"):
+            briefs_count = conn.execute(
+                text("SELECT COUNT(*) FROM briefs WHERE shop_id = :shop_id"),
+                {"shop_id": shop_id},
+            ).scalar() or 0
+
+        if table_exists("activity_logs") and "shop_id" in columns("activity_logs"):
+            activity_count = conn.execute(
+                text("SELECT COUNT(*) FROM activity_logs WHERE shop_id = :shop_id"),
+                {"shop_id": shop_id},
+            ).scalar() or 0
+
+        if table_exists("creators") and "shop_id" in columns("creators"):
+            creators_count = conn.execute(
+                text("SELECT COUNT(*) FROM creators WHERE shop_id = :shop_id"),
+                {"shop_id": shop_id},
+            ).scalar() or 0
+
+    return {
+        "shop_id": shop_id,
+        "has_data": any([creatives_count, recommendations_count, briefs_count, activity_count, creators_count]),
+        "counts": {
+            "creatives": creatives_count,
+            "recommendations": recommendations_count,
+            "briefs": briefs_count,
+            "activity": activity_count,
+            "creators": creators_count,
+        },
+    }
+
+
+@router.get("/creatives")
+def get_personalized_creatives(shop_id: int):
+    if not table_exists("creatives") or "shop_id" not in columns("creatives"):
+        return []
+
+    with engine.begin() as conn:
+        rows = fetch_all(
+            conn,
+            "SELECT * FROM creatives WHERE shop_id = :shop_id ORDER BY id DESC",
+            {"shop_id": shop_id},
+        )
+
+    return rows
+
+
+@router.post("/creatives")
+def save_personalized_creative(payload: SaveCreativeRequest):
+    if not table_exists("creatives"):
+        raise HTTPException(status_code=500, detail="Creatives table does not exist.")
+
+    now = datetime.utcnow().isoformat()
+
+    with engine.begin() as conn:
+        creative_id = insert_dynamic(conn, "creatives", {
+            "shop_id": payload.shop_id,
+            "title": payload.title or "Uploaded Creative",
+            "product": payload.product,
+            "creator": payload.creator or "Uploaded by user",
+            "video_url": payload.video_url,
+            "thumbnail": payload.thumbnail,
+            "insight": payload.insight,
+            "transcript": payload.transcript,
+            "transcript_summary": payload.transcript_summary,
+            "hook_type": payload.hook_type,
+            "creator_type": payload.creator_type,
+            "humor_style": payload.humor_style,
+            "delivery_style": payload.delivery_style,
+            "creative_score": payload.score,
+            "score": payload.score,
+            "created_at": now,
+        })
+
+        if table_exists("activity_logs"):
+            try:
+                insert_dynamic(conn, "activity_logs", {
+                    "shop_id": payload.shop_id,
+                    "user_email": "system",
+                    "user_name": "System",
+                    "activity_type": "creative_upload",
+                    "title": "Creative saved",
+                    "description": payload.title or "Uploaded Creative",
+                    "created_at": now,
+                })
+            except Exception:
+                pass
+
+    return {
+        "success": True,
+        "creative_id": creative_id,
+        "shop_id": payload.shop_id,
+    }
+
+
+@router.get("/dashboard")
+def personalized_dashboard(shop_id: int):
+    state = get_shop_state(shop_id)
+    return {
+        "shop_id": shop_id,
+        "counts": state["counts"],
+        "has_data": state["has_data"],
+    }
+
+
+@router.get("/recommendations")
+def personalized_recommendations(shop_id: int):
+    if not table_exists("recommendations") or "shop_id" not in columns("recommendations"):
+        return []
+
+    with engine.begin() as conn:
+        return fetch_all(
+            conn,
+            "SELECT * FROM recommendations WHERE shop_id = :shop_id ORDER BY id DESC",
+            {"shop_id": shop_id},
+        )
+
+
+@router.get("/briefs")
+def personalized_briefs(shop_id: int):
+    if not table_exists("briefs") or "shop_id" not in columns("briefs"):
+        return []
+
+    with engine.begin() as conn:
+        return fetch_all(
+            conn,
+            "SELECT * FROM briefs WHERE shop_id = :shop_id ORDER BY id DESC",
+            {"shop_id": shop_id},
+        )
+
+
+@router.get("/creators")
+def personalized_creators(shop_id: int):
+    if not table_exists("creators") or "shop_id" not in columns("creators"):
+        return []
+
+    with engine.begin() as conn:
+        return fetch_all(
+            conn,
+            "SELECT * FROM creators WHERE shop_id = :shop_id ORDER BY id DESC",
+            {"shop_id": shop_id},
+        )

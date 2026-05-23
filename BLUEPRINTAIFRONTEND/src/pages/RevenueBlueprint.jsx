@@ -1,145 +1,113 @@
 import { useEffect, useState } from "react";
-import { RefreshCw, Route, Sparkles } from "lucide-react";
-import BlueprintTimeline from "../components/BlueprintTimeline";
-import BlueprintDiagnosisCard from "../components/BlueprintDiagnosisCard";
-import BlueprintImpactCard from "../components/BlueprintImpactCard";
-import { generateBlueprint, getLatestBlueprint } from "../services/blueprintApi";
-import "../styles/revenue-blueprint.css";
+import EmptyWorkspaceState from "../components/EmptyWorkspaceState";
+import { API_BASE, getSelectedShopId, isDemoAccount } from "../lib/accountContext";
 
-import { createActivityLog } from "../services/activityLog";
 export default function RevenueBlueprint() {
   const [blueprint, setBlueprint] = useState(null);
+  const [shopState, setShopState] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [error, setError] = useState("");
-
-  const selectedShopId =
-    localStorage.getItem("selectedShopId") ||
-    localStorage.getItem("shop_id") ||
-    "1";
-
-  async function loadBlueprint() {
-    try {
-      setLoading(true);
-      setError("");
-      const data = await getLatestBlueprint(selectedShopId);
-      setBlueprint(data);
-    } catch (err) {
-      console.error(err);
-      setError("Could not load blueprint.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleGenerateNewBlueprint() {
-    try {
-      setGenerating(true);
-      setError("");
-      const data = await generateBlueprint(selectedShopId);
-      setBlueprint(data);
-
-      try {
-        await createActivityLog({
-          activity_type: "blueprint",
-          title: "Blueprint generated",
-          description:
-            data?.summary ||
-            data?.diagnosis ||
-            "A new AI Growth Blueprint was generated.",
-          shop_id: data?.shop_id || selectedShopId || 1,
-          metadata: {
-            blueprint_id: data?.id,
-            main_goal: data?.main_goal,
-            estimated_impact: data?.estimated_impact,
-            steps_count: data?.steps?.length || 0,
-          },
-        });
-      } catch (logError) {
-        console.warn("Failed to save blueprint activity log:", logError);
-      }
-    } catch (err) {
-      console.error(err);
-      setError("Could not generate blueprint.");
-    } finally {
-      setGenerating(false);
-    }
-  }
-
-  function handleStepUpdated(updatedStep) {
-    setBlueprint((current) => {
-      if (!current) return current;
-
-      return {
-        ...current,
-        steps: current.steps.map((step) =>
-          step.id === updatedStep.id ? updatedStep : step
-        ),
-      };
-    });
-  }
+  const demo = isDemoAccount();
+  const shopId = getSelectedShopId();
 
   useEffect(() => {
-    loadBlueprint();
-  }, []);
+    async function load() {
+      const stateRes = await fetch(`${API_BASE}/personalized/shop-state?shop_id=${shopId}`);
+      const state = await stateRes.json();
+      setShopState(state);
 
-  if (loading) {
-    return (
-      <div className="revenue-blueprint-page">
-        <div className="blueprint-loading">Loading AI Growth Blueprint...</div>
-      </div>
-    );
+      const res = await fetch(`${API_BASE}/blueprint/${shopId}/latest`);
+      if (res.ok) {
+        const data = await res.json();
+        setBlueprint(data);
+      }
+
+      setLoading(false);
+    }
+
+    load().catch((err) => {
+      console.error(err);
+      setLoading(false);
+    });
+  }, [shopId]);
+
+  async function generateBlueprint() {
+    const res = await fetch(`${API_BASE}/blueprint/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shop_id: shopId }),
+    });
+
+    const data = await res.json();
+    setBlueprint(data);
   }
 
+  const newEmptyAccount = !demo && !shopState?.has_data && !blueprint;
+
   return (
-    <div className="revenue-blueprint-page">
-      <div className="blueprint-hero">
-        <div>
-          <div className="blueprint-badge">
-            <Sparkles size={16} />
-            AI Growth Blueprint
-          </div>
+    <div className="min-h-screen bg-[#070b16] text-white px-8 py-10">
+      <div className="rounded-3xl border border-slate-800 bg-[#0b1220] p-10 mb-8">
+        <p className="text-cyan-400 uppercase tracking-[0.25em] font-black">
+          AI Growth Plan
+        </p>
+        <h1 className="text-6xl font-black mt-4">Revenue Blueprint</h1>
+        <p className="text-slate-400 mt-5 text-xl">
+          A shop-specific plan based on this account’s data.
+        </p>
+      </div>
 
-          <h1>Revenue Blueprint</h1>
-          <p>
-            A step-by-step TikTok Shop growth plan built from your dashboard,
-            video analysis, creator comparison, ad briefs, and recommendations.
+      {loading && <p className="text-slate-400">Loading blueprint...</p>}
+
+      {!loading && newEmptyAccount && (
+        <EmptyWorkspaceState
+          title="No blueprint yet"
+          description="This new shop does not have enough data for a strong revenue blueprint yet. Upload creatives or connect shop data first."
+          primaryText="Upload Creative"
+          primaryLink="/upload"
+        />
+      )}
+
+      {!loading && !newEmptyAccount && !blueprint && (
+        <div className="rounded-3xl border border-slate-800 bg-[#0b1220] p-10">
+          <h2 className="text-3xl font-black">Generate your first blueprint</h2>
+          <p className="text-slate-400 mt-4">
+            This will create a shop-specific growth plan.
           </p>
+          <button
+            onClick={generateBlueprint}
+            className="mt-7 rounded-xl bg-cyan-500 px-6 py-3 font-black text-white"
+          >
+            Generate Blueprint
+          </button>
         </div>
+      )}
 
-        <button
-          className="blueprint-generate-button"
-          onClick={handleGenerateNewBlueprint}
-          disabled={generating}
-        >
-          <RefreshCw size={18} className={generating ? "spin" : ""} />
-          {generating ? "Generating..." : "Generate New Blueprint"}
-        </button>
-      </div>
+      {!loading && blueprint && (
+        <div className="rounded-3xl border border-slate-800 bg-[#0b1220] p-10">
+          <h2 className="text-4xl font-black">
+            {blueprint.title || "AI Growth Blueprint"}
+          </h2>
+          <p className="text-slate-400 mt-5 text-lg">
+            {blueprint.summary || blueprint.diagnosis || "Your blueprint is ready."}
+          </p>
 
-      {error && <div className="blueprint-error">{error}</div>}
+          <button
+            onClick={generateBlueprint}
+            className="mt-7 rounded-xl bg-cyan-500 px-6 py-3 font-black text-white"
+          >
+            Generate New Blueprint
+          </button>
 
-      <div className="blueprint-grid">
-        <BlueprintDiagnosisCard blueprint={blueprint} />
-        <BlueprintImpactCard blueprint={blueprint} />
-      </div>
-
-      <div className="blueprint-summary-card">
-        <div className="blueprint-card-icon">
-          <Route size={22} />
+          <div className="space-y-5 mt-8">
+            {(blueprint.steps || []).map((step, index) => (
+              <div key={step.id || index} className="rounded-2xl border border-slate-800 bg-slate-950/40 p-6">
+                <p className="text-cyan-300 font-black">Step {step.step_number || index + 1}</p>
+                <h3 className="text-2xl font-black mt-2">{step.title}</h3>
+                <p className="text-slate-400 mt-3">{step.description || step.action}</p>
+              </div>
+            ))}
+          </div>
         </div>
-
-        <div>
-          <p className="blueprint-eyebrow">Plan Summary</p>
-          <h2>{blueprint?.title || "AI Growth Blueprint"}</h2>
-          <p>{blueprint?.summary}</p>
-        </div>
-      </div>
-
-      <BlueprintTimeline
-        steps={blueprint?.steps || []}
-        onStepUpdated={handleStepUpdated}
-      />
+      )}
     </div>
   );
 }
