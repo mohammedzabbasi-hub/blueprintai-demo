@@ -3,6 +3,7 @@ from api.routes import onboarding
 from fastapi.middleware.cors import CORSMiddleware
 
 from routes.video_analysis import router as video_analysis_router
+from routes.activity_log import router as activity_log_router
 from routes.creators import router as creators_router
 from routes.demo import router as demo_router
 from routes.recommendations import router as recommendations_router
@@ -71,3 +72,5 @@ app.include_router(briefs.router, prefix="/briefs", tags=["briefs"])
 from routes import revenue_blueprint
 
 app.include_router(revenue_blueprint.router, prefix="/blueprint", tags=["Revenue Blueprint"])
+
+app.include_router(activity_log_router)
