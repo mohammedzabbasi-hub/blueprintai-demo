@@ -1,105 +1,129 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { clearActivityLog, getActivityLog } from "../services/activityLog";
 
-function formatDate(date) {
-  return new Date(date).toLocaleString();
-}
-
-function badgeColor(type) {
-  if (type.includes("video")) return "bg-sky-500/15 text-sky-300";
-  if (type.includes("brief")) return "bg-purple-500/15 text-purple-300";
-  if (type.includes("blueprint")) return "bg-emerald-500/15 text-emerald-300";
-  if (type.includes("shop")) return "bg-amber-500/15 text-amber-300";
-  return "bg-white/10 text-slate-300";
+function formatDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString();
 }
 
 export default function ActivityLog() {
-  const [logs, setLogs] = useState(getActivityLog());
+  const [logs, setLogs] = useState([]);
   const [filter, setFilter] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const filteredLogs = useMemo(() => {
-    if (filter === "all") return logs;
-    return logs.filter((log) => log.type === filter);
-  }, [logs, filter]);
+  async function loadLogs() {
+    try {
+      setLoading(true);
+      setError("");
+      const data = await getActivityLog({
+        activity_type: filter,
+      });
+      setLogs(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Failed to load activity log:", err);
+      setError("Could not load activity log.");
+      setLogs([]);
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  const types = ["all", ...new Set(logs.map((log) => log.type))];
+  useEffect(() => {
+    loadLogs();
+  }, [filter]);
 
-  function handleClear() {
-    clearActivityLog();
-    setLogs([]);
+  const filters = useMemo(
+    () => ["all", "video_analysis", "blueprint", "ad_brief", "recommendation", "shop_connection"],
+    []
+  );
+
+  async function handleClear() {
+    try {
+      await clearActivityLog();
+      setLogs([]);
+    } catch (err) {
+      console.error("Failed to clear activity log:", err);
+      setError("Could not clear activity log.");
+    }
   }
 
   return (
-    <section className="min-h-screen bg-[#070b18] text-white p-8">
+    <div className="min-h-screen bg-[#070b16] text-white px-8 py-10">
       <div className="max-w-6xl mx-auto">
-        <div className="border border-white/10 rounded-3xl p-8 bg-[#0a1020]">
-          <p className="text-sky-400 text-xs font-bold tracking-[0.25em] uppercase">
+        <div className="rounded-3xl border border-slate-800 bg-[#0b1220] p-8 mb-8">
+          <p className="text-cyan-400 text-sm font-bold tracking-[0.35em] uppercase">
             Workspace History
           </p>
-
-          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+          <div className="flex items-center justify-between gap-4 mt-4">
             <div>
-              <h1 className="text-5xl font-black mt-4">Activity Log</h1>
-              <p className="text-slate-400 mt-3">
+              <h1 className="text-5xl font-black">Activity Log</h1>
+              <p className="text-slate-400 mt-4 text-lg">
                 Track video analyses, ad briefs, blueprint generations, saved creatives, and shop connections.
               </p>
             </div>
-
             <button
               onClick={handleClear}
-              className="rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-3 text-red-200 font-bold"
+              className="rounded-xl border border-red-500/40 bg-red-950/40 px-6 py-3 text-red-100 font-semibold"
             >
               Clear Log
             </button>
           </div>
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-3">
-          {types.map((type) => (
+        <div className="flex flex-wrap gap-3 mb-8">
+          {filters.map((item) => (
             <button
-              key={type}
-              onClick={() => setFilter(type)}
-              className={`rounded-xl px-4 py-2 font-bold border ${
-                filter === type
-                  ? "bg-sky-500 text-white border-sky-400"
-                  : "bg-white/5 text-slate-300 border-white/10"
+              key={item}
+              onClick={() => setFilter(item)}
+              className={`rounded-xl px-5 py-3 font-bold ${
+                filter === item
+                  ? "bg-cyan-500 text-white"
+                  : "bg-[#0b1220] border border-slate-800 text-slate-300"
               }`}
             >
-              {type}
+              {item}
             </button>
           ))}
         </div>
 
-        <div className="mt-6 space-y-4">
-          {filteredLogs.length === 0 ? (
-            <div className="border border-white/10 rounded-2xl p-8 bg-[#0d1526] text-slate-400">
-              No activity has been logged yet.
-            </div>
-          ) : (
-            filteredLogs.map((log) => (
-              <div key={log.id} className="border border-white/10 rounded-2xl p-6 bg-[#0d1526]">
-                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                  <div>
-                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${badgeColor(log.type)}`}>
-                      {log.type}
-                    </span>
+        {loading && <p className="text-slate-400">Loading activity...</p>}
+        {error && <p className="text-red-300">{error}</p>}
 
-                    <h2 className="text-xl font-bold mt-3">{log.title}</h2>
-                    <p className="text-slate-400 mt-2">{log.description}</p>
+        {!loading && logs.length === 0 && (
+          <div className="rounded-2xl border border-slate-800 bg-[#0b1220] p-8 text-slate-400">
+            No activity yet.
+          </div>
+        )}
 
-                    <div className="mt-4 text-sm text-slate-500">
-                      <p>User: {log.user_name} · {log.user_email}</p>
-                      <p>Shop ID: {log.shop_id}</p>
-                    </div>
-                  </div>
-
-                  <p className="text-sm text-slate-500">{formatDate(log.created_at)}</p>
+        <div className="space-y-5">
+          {logs.map((log) => (
+            <div
+              key={log.id}
+              className="rounded-2xl border border-slate-800 bg-[#0b1220] p-6"
+            >
+              <div className="flex justify-between gap-4">
+                <div>
+                  <span className="inline-block rounded-full bg-cyan-950 px-4 py-1 text-cyan-300 text-sm font-bold">
+                    {log.activity_type}
+                  </span>
+                  <h2 className="text-2xl font-bold mt-4">{log.title}</h2>
+                  <p className="text-slate-400 mt-3">{log.description}</p>
+                  <p className="text-slate-500 mt-4 text-sm">
+                    User: {log.user_name || "Unknown"} · {log.user_email || "No email"}
+                    {log.shop_id ? ` · Shop ID: ${log.shop_id}` : ""}
+                  </p>
                 </div>
+                <p className="text-slate-400 text-sm min-w-[180px] text-right">
+                  {formatDate(log.created_at)}
+                </p>
               </div>
-            ))
-          )}
+            </div>
+          ))}
         </div>
       </div>
-    </section>
+    </div>
   );
 }
