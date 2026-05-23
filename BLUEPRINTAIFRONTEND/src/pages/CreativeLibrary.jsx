@@ -1,314 +1,269 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import "../creative-library.css";
-import { getEngineAnalysis, getSelectedShopId } from "../services/engineApi";
 
-const demoCreatives = [
-  {
-    id: 1,
-    title: "TTAD1 - Creator Product Review",
-    product: "Demo Product",
-    creator: "Demo Creator 1",
-    videoUrl: "/demo-videos/TTAD1.mp4",
-    hook: "review hook",
-    creatorType: "affiliate creator",
-    humor: "No humor tag",
-    delivery: "testimonial style",
-    score: 8,
-    views: "680,891",
-    likes: "33,450",
-    shares: "1,464",
-    clicks: "25,452",
-    orders: "2,790",
-    insight: "A creator-led review style ad that introduces the product through personal experience.",
-  },
-  {
-    id: 2,
-    title: "TTAD2 - Beauty Product Demo",
-    product: "Beauty Product",
-    creator: "Demo Creator 2",
-    videoUrl: "/demo-videos/TTAD2.mp4",
-    hook: "visual transformation",
-    creatorType: "beauty creator",
-    humor: "No humor tag",
-    delivery: "calm demo",
-    score: 7,
-    views: "591,364",
-    likes: "23,103",
-    shares: "4,099",
-    clicks: "24,281",
-    orders: "2,393",
-    insight: "A beauty-focused TikTok ad using close-up visuals and product application.",
-  },
-  {
-    id: 3,
-    title: "TTAD3 - Product Close-Up Creative",
-    product: "Demo Product",
-    creator: "Demo Creator 3",
-    videoUrl: "/demo-videos/TTAD3.mp4",
-    hook: "close-up product hook",
-    creatorType: "product demo creator",
-    humor: "No humor tag",
-    delivery: "fast-paced demo",
-    score: 9,
-    views: "720,000",
-    likes: "41,000",
-    shares: "5,200",
-    clicks: "31,000",
-    orders: "3,400",
-    insight: "Strong product visuals that quickly show what the viewer is supposed to focus on.",
-  },
-  {
-    id: 4,
-    title: "TTAD4 - Short Brand Clip",
-    product: "Demo Product",
-    creator: "Brand Creative",
-    videoUrl: "/demo-videos/TTAD4.mp4",
-    hook: "brand intro",
-    creatorType: "brand-made ad",
-    humor: "No humor tag",
-    delivery: "short direct pitch",
-    score: 6,
-    views: "120,000",
-    likes: "8,500",
-    shares: "640",
-    clicks: "6,100",
-    orders: "430",
-    insight: "A short branded creative that can be used as a simple TikTok Shop product ad.",
-  },
-  {
-    id: 5,
-    title: "TTAD5 - Lifestyle Product Use",
-    product: "Lifestyle Product",
-    creator: "Demo Creator 5",
-    videoUrl: "/demo-videos/TTAD5.mp4",
-    hook: "day-in-life hook",
-    creatorType: "lifestyle creator",
-    humor: "No humor tag",
-    delivery: "natural use case",
-    score: 8,
-    views: "502,300",
-    likes: "28,900",
-    shares: "2,100",
-    clicks: "18,430",
-    orders: "1,820",
-    insight: "Shows the product being used in a natural real-life setting, which helps the ad feel less forced.",
-  },
-  {
-    id: 6,
-    title: "TTAD6 - Problem/Solution Ad",
-    product: "Demo Product",
-    creator: "Demo Creator 6",
-    videoUrl: "/demo-videos/TTAD6.mp4",
-    hook: "problem-solution hook",
-    creatorType: "UGC creator",
-    humor: "No humor tag",
-    delivery: "explainer style",
-    score: 7,
-    views: "438,100",
-    likes: "19,700",
-    shares: "1,850",
-    clicks: "14,210",
-    orders: "1,240",
-    insight: "Uses a problem/solution structure that makes the product benefit easier to understand.",
-  },
-  {
-    id: 7,
-    title: "TTAD7 - Phone Audio Mistake Ad",
-    product: "Mini Lavalier Mic",
-    creator: "Demo Creator 7",
-    videoUrl: "/demo-videos/TTAD7.mp4",
-    hook: "mistake hook",
-    creatorType: "tech creator",
-    humor: "light humor",
-    delivery: "direct creator pitch",
-    score: 9,
-    views: "812,500",
-    likes: "52,800",
-    shares: "6,400",
-    clicks: "39,200",
-    orders: "4,120",
-    insight: "A strong hook-based ad that calls out a common creator mistake and positions the product as the fix.",
-  },
-  {
-    id: 8,
-    title: "TTAD8 - Creator Talking Head Ad",
-    product: "Demo Product",
-    creator: "Demo Creator 8",
-    videoUrl: "/demo-videos/TTAD8.mp4",
-    hook: "talking-head hook",
-    creatorType: "educational creator",
-    humor: "No humor tag",
-    delivery: "face-to-camera",
-    score: 8,
-    views: "635,900",
-    likes: "36,100",
-    shares: "3,700",
-    clicks: "22,800",
-    orders: "2,610",
-    insight: "A face-to-camera TikTok ad that feels like a natural creator recommendation.",
-  },
-];
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://blueprintai-hvgq.onrender.com";
+
+const DEMO_EMAILS = new Set([
+  "beauty@demo.com",
+  "fitness@demo.com",
+  "home@demo.com",
+  "agency@demo.com",
+]);
+
+function getUser() {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function getShopId() {
+  const user = getUser();
+  return (
+    user.shop_id ||
+    user.shopId ||
+    localStorage.getItem("selectedShopId") ||
+    localStorage.getItem("shop_id") ||
+    1
+  );
+}
+
+function isDemoAccount() {
+  const user = getUser();
+  const email = String(user.email || "").toLowerCase();
+  return DEMO_EMAILS.has(email) || user.is_demo === true;
+}
+
+function numberFormat(value) {
+  const num = Number(value || 0);
+  return num.toLocaleString();
+}
 
 export default function CreativeLibrary() {
+  const [creatives, setCreatives] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [engineCreatives, setEngineCreatives] = useState([]);
+  const [hookType, setHookType] = useState("all");
+  const [creatorType, setCreatorType] = useState("all");
+
+  const demoAccount = isDemoAccount();
+  const shopId = getShopId();
 
   useEffect(() => {
-    async function loadEngineCreatives() {
+    async function loadCreatives() {
       try {
-        const data = await getEngineAnalysis(getSelectedShopId());
-        const mapped = (data.scored_creatives || []).map((item, index) => ({
-          id: item.creative_id || index + 1,
-          title: item.title || `Creative ${index + 1}`,
-          product: item.title?.replace("Demo TikTok creative for ", "") || "Demo Product",
-          creator: item.labels?.creator_type || "TikTok Creator",
-          videoUrl: demoCreatives[index % demoCreatives.length]?.videoUrl || "/demo-videos/TTAD1.mp4",
-          hook: item.labels?.hook_type || "Unknown hook",
-          creatorType: item.labels?.creator_type || "Unknown creator",
-          humor: item.labels?.visual_style || "No humor tag",
-          delivery: item.labels?.product_angle || "Product angle",
-          score: item.score || "—",
-          views: item.metrics?.views?.toLocaleString?.() || item.metrics?.views || "0",
-          likes: item.metrics?.likes?.toLocaleString?.() || item.metrics?.likes || "0",
-          shares: item.metrics?.shares?.toLocaleString?.() || item.metrics?.shares || "0",
-          clicks: item.metrics?.clicks?.toLocaleString?.() || item.metrics?.clicks || "0",
-          orders: item.metrics?.orders?.toLocaleString?.() || item.metrics?.orders || "0",
-          insight: item.performance_status || "Analyzed by BluePrintAI engine.",
-        }));
+        setLoading(true);
 
-        if (mapped.length) setEngineCreatives(mapped);
+        if (!demoAccount) {
+          setCreatives([]);
+          return;
+        }
+
+        const res = await fetch(`${API_BASE}/creatives?shop_id=${shopId}`);
+
+        if (!res.ok) {
+          setCreatives([]);
+          return;
+        }
+
+        const data = await res.json();
+        setCreatives(Array.isArray(data) ? data : data.creatives || []);
       } catch (err) {
-        console.warn("Using fallback demo creatives:", err);
+        console.error("Failed to load creatives:", err);
+        setCreatives([]);
+      } finally {
+        setLoading(false);
       }
     }
 
-    loadEngineCreatives();
-  }, []);
+    loadCreatives();
+  }, [demoAccount, shopId]);
 
-  const creatives = engineCreatives.length ? engineCreatives : demoCreatives;
+  const hookTypes = useMemo(() => {
+    const values = creatives.map((c) => c.hook_type || c.hook || "").filter(Boolean);
+    return ["all", ...new Set(values)];
+  }, [creatives]);
+
+  const creatorTypes = useMemo(() => {
+    const values = creatives.map((c) => c.creator_type || c.creator_archetype || "").filter(Boolean);
+    return ["all", ...new Set(values)];
+  }, [creatives]);
 
   const filteredCreatives = useMemo(() => {
-    const query = search.trim().toLowerCase();
-
-    if (!query) return creatives;
-
     return creatives.filter((creative) => {
-      const searchableText = [
-        creative.title,
-        creative.product,
-        creative.creator,
-        creative.hook,
-        creative.creatorType,
-        creative.humor,
-        creative.delivery,
-        creative.insight,
-      ]
-        .join(" ")
-        .toLowerCase();
+      const title = `${creative.title || ""} ${creative.product || ""} ${creative.creator || ""}`.toLowerCase();
+      const matchesSearch = title.includes(search.toLowerCase());
 
-      return searchableText.includes(query);
+      const creativeHook = creative.hook_type || creative.hook || "";
+      const creativeCreator = creative.creator_type || creative.creator_archetype || "";
+
+      const matchesHook = hookType === "all" || creativeHook === hookType;
+      const matchesCreator = creatorType === "all" || creativeCreator === creatorType;
+
+      return matchesSearch && matchesHook && matchesCreator;
     });
-  }, [search, creatives]);
+  }, [creatives, search, hookType, creatorType]);
 
   return (
-    <section className="creative-library-page">
-      <div className="creative-library-shell">
-        <div className="creative-library-hero">
-          <div>
-            <p className="creative-eyebrow">Creative Intelligence</p>
-            <h1>Creative Library</h1>
-            <p>
-              Compare hooks, creator types, humor, delivery, and performance across
-              your TikTok Shop creatives.
-            </p>
+    <div className="min-h-screen bg-[#070b16] text-white px-8 py-10">
+      <div className="rounded-3xl border border-slate-800 bg-[#0b1220] p-10 mb-8">
+        <p className="text-slate-300 uppercase tracking-[0.25em] font-black">
+          Creative Intelligence
+        </p>
+        <h1 className="text-7xl font-black mt-4">Creative Library</h1>
+        <p className="text-slate-400 mt-6 text-xl max-w-4xl">
+          Compare hooks, creator types, humor, delivery, and performance across your TikTok Shop creatives.
+        </p>
+      </div>
+
+      {!demoAccount && (
+        <div className="rounded-3xl border border-cyan-900 bg-[#0b1220] p-10 mb-8">
+          <h2 className="text-3xl font-black">No creatives yet</h2>
+          <p className="text-slate-400 mt-4 text-lg">
+            This is a newly created shop account, so demo videos are hidden. Upload a TikTok ad or connect shop data to start building your creative library.
+          </p>
+
+          <div className="flex gap-4 mt-8">
+            <Link
+              to="/upload"
+              className="rounded-xl bg-cyan-500 px-6 py-3 font-bold text-white"
+            >
+              Upload Creative
+            </Link>
+
+            <Link
+              to="/connect-shop"
+              className="rounded-xl border border-slate-700 px-6 py-3 font-bold text-slate-200"
+            >
+              Connect Shop
+            </Link>
           </div>
         </div>
+      )}
 
-        <div className="creative-filter-card">
-          <input
-            placeholder="Search creatives..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <select>
-            <option>All hook types</option>
-          </select>
-          <select>
-            <option>All creator types</option>
-          </select>
-        </div>
+      {demoAccount && (
+        <>
+          <div className="rounded-3xl border border-slate-800 bg-[#0b1220] p-6 mb-8 grid grid-cols-1 md:grid-cols-3 gap-5">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search creatives..."
+              className="rounded-xl bg-slate-900 border border-slate-700 px-5 py-4 text-white"
+            />
 
-        <div className="creative-list">
-          {filteredCreatives.length === 0 ? (
-            <div className="creative-empty-state">
-              No creatives found for "{search}".
+            <select
+              value={hookType}
+              onChange={(e) => setHookType(e.target.value)}
+              className="rounded-xl bg-slate-900 border border-slate-700 px-5 py-4 text-white"
+            >
+              {hookTypes.map((item) => (
+                <option key={item} value={item}>
+                  {item === "all" ? "All hook types" : item}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={creatorType}
+              onChange={(e) => setCreatorType(e.target.value)}
+              className="rounded-xl bg-slate-900 border border-slate-700 px-5 py-4 text-white"
+            >
+              {creatorTypes.map((item) => (
+                <option key={item} value={item}>
+                  {item === "all" ? "All creator types" : item}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {loading && <p className="text-slate-400">Loading creatives...</p>}
+
+          {!loading && filteredCreatives.length === 0 && (
+            <div className="rounded-3xl border border-slate-800 bg-[#0b1220] p-10">
+              <h2 className="text-3xl font-black">No creatives found</h2>
+              <p className="text-slate-400 mt-3">Try changing your filters.</p>
             </div>
-          ) : (
-            filteredCreatives.map((creative) => (
-            <article key={creative.id} className="creative-card">
-              <Link to={`/creatives/${creative.id}`} className="creative-video-wrap">
-                <video
-                  src={creative.videoUrl}
-                  controls
-                  playsInline
-                  preload="metadata"
-                  className="creative-video"
-                />
-              </Link>
-
-              <div className="creative-card-content">
-                <div className="creative-card-top">
-                  <div>
-                    <Link to={`/creatives/${creative.id}`} className="creative-title">
-                      {creative.title}
-                    </Link>
-                    <p className="creative-meta">
-                      {creative.product} · {creative.creator}
-                    </p>
-                  </div>
-
-                  <div className="creative-score">
-                    <span>Score</span>
-                    <strong>{creative.score}</strong>
-                  </div>
-                </div>
-
-                <div className="creative-tags">
-                  <span>{creative.hook}</span>
-                  <span>{creative.creatorType}</span>
-                  <span>{creative.humor}</span>
-                  <span>{creative.delivery}</span>
-                </div>
-
-                <div className="creative-metrics">
-                  <Metric label="Views" value={creative.views} />
-                  <Metric label="Likes" value={creative.likes} />
-                  <Metric label="Shares" value={creative.shares} />
-                  <Metric label="Clicks" value={creative.clicks} />
-                  <Metric label="Orders" value={creative.orders} />
-                </div>
-
-                <p className="creative-insight">{creative.insight}</p>
-
-                <Link to={`/creatives/${creative.id}`} className="creative-detail-link">
-                  View creative details →
-                </Link>
-              </div>
-            </article>
-          ))
           )}
-        </div>
-      </div>
-    </section>
+
+          <div className="space-y-8">
+            {filteredCreatives.map((creative) => (
+              <div
+                key={creative.id}
+                className="rounded-3xl border border-slate-800 bg-[#0b1220] p-8 grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-8"
+              >
+                <video
+                  src={creative.video_url || creative.videoUrl || ""}
+                  poster={creative.thumbnail || creative.thumbnail_url || ""}
+                  controls
+                  className="w-full rounded-2xl bg-black aspect-video object-cover"
+                />
+
+                <div>
+                  <div className="flex justify-between gap-4">
+                    <div>
+                      <h2 className="text-4xl font-black">
+                        {creative.title || "Untitled Creative"}
+                      </h2>
+                      <p className="text-slate-400 mt-2 text-lg">
+                        {creative.product || "Demo Product"} · {creative.creator || creative.promoter_handle || "Creator"}
+                      </p>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-slate-400 font-bold">Score</p>
+                      <p className="text-cyan-400 text-5xl font-black">
+                        {creative.score || creative.creative_score || 8}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3 mt-6">
+                    {[creative.hook_type, creative.creator_type, creative.humor_style, creative.delivery_style]
+                      .filter(Boolean)
+                      .map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-full border border-slate-500 px-4 py-2 font-bold text-slate-200"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-7">
+                    <Metric label="Views" value={creative.views} />
+                    <Metric label="Likes" value={creative.likes} />
+                    <Metric label="Shares" value={creative.shares} />
+                    <Metric label="Clicks" value={creative.clicks} />
+                    <Metric label="Orders" value={creative.orders} />
+                  </div>
+
+                  <p className="text-slate-400 mt-7 text-lg">
+                    {creative.insight || creative.transcript_summary || "No insight available."}
+                  </p>
+
+                  <Link
+                    to={`/creatives/${creative.id}`}
+                    className="inline-block text-cyan-400 font-black mt-6"
+                  >
+                    View creative details →
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
 function Metric({ label, value }) {
   return (
-    <div className="creative-metric-card">
-      <p>{label}</p>
-      <strong>{value}</strong>
+    <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+      <p className="text-slate-400 font-bold">{label}</p>
+      <p className="text-white text-2xl font-black mt-2">{numberFormat(value)}</p>
     </div>
   );
 }
