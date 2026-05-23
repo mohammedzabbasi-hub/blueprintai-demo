@@ -1,94 +1,171 @@
 import { useState } from "react";
-import { loginDemoAccount, DEMO_ACCOUNTS } from "../services/demoAuth";
+import { useNavigate } from "react-router-dom";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://blueprintai-hvgq.onrender.com";
+
+const demoAccounts = [
+  {
+    name: "GlowLab Beauty Team",
+    email: "beauty@demo.com",
+    shops: "1",
+  },
+  {
+    name: "FitPulse Gear Team",
+    email: "fitness@demo.com",
+    shops: "2",
+  },
+  {
+    name: "HomeEase Finds Team",
+    email: "home@demo.com",
+    shops: "3",
+  },
+  {
+    name: "BlueprintAI Agency Demo",
+    email: "agency@demo.com",
+    shops: "1, 2, 3, 4, 5",
+  },
+];
 
 export default function Login() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("beauty@demo.com");
   const [password, setPassword] = useState("demo123");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleLogin(e) {
-    e.preventDefault();
+  async function handleLogin(e) {
+    e?.preventDefault();
 
     try {
-      loginDemoAccount(email, password);
-      window.location.href = "/connect-shop";
+      setLoading(true);
+      setError("");
+
+      const res = await fetch(`${API_BASE}/auth/app-login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.detail || "Login failed.");
+      }
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("access_token", data.token);
+      localStorage.setItem("authToken", data.token);
+
+      localStorage.setItem("user", JSON.stringify(data.user));
+      localStorage.setItem("selectedShop", JSON.stringify(data.shop));
+
+      if (data.shop?.id) {
+        localStorage.setItem("selectedShopId", String(data.shop.id));
+        localStorage.setItem("shop_id", String(data.shop.id));
+      }
+
+      localStorage.setItem("onboardingComplete", "true");
+
+      navigate("/dashboard");
     } catch (err) {
-      setError(err.message);
+      console.error(err);
+      setError(err.message || "Invalid email or password.");
+    } finally {
+      setLoading(false);
     }
   }
 
+  function fillDemo(account) {
+    setEmail(account.email);
+    setPassword("demo123");
+    setError("");
+  }
+
   return (
-    <section className="min-h-screen bg-[#070b18] text-white flex items-center justify-center p-8">
-      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="border border-white/10 rounded-3xl p-8 bg-[#0a1020]">
-          <p className="text-sky-400 text-xs font-bold tracking-[0.25em] uppercase">
-            BlueprintAI Demo Login
+    <div className="min-h-screen bg-[#070b16] text-white px-8 py-12">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10">
+        <div className="rounded-3xl border border-slate-800 bg-[#0b1220] p-10">
+          <p className="text-cyan-400 tracking-[0.3em] uppercase font-black">
+            BlueprintAI Login
           </p>
 
-          <h1 className="text-5xl font-black mt-4">Sign in</h1>
+          <h1 className="text-6xl font-black mt-6">Sign in</h1>
 
-          <p className="text-slate-400 mt-4">
-            Use a fake account to simulate how different TikTok Shop owners would see separate shop data.
+          <p className="text-slate-400 mt-6 text-xl">
+            Sign in with a demo account or an account created during onboarding.
           </p>
 
-          <form onSubmit={handleLogin} className="mt-8 space-y-5">
-            <label className="block">
-              <span className="text-sm text-slate-300">Email</span>
-              <input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-2 w-full rounded-xl bg-white/10 border border-white/10 px-4 py-3 text-white outline-none focus:border-sky-400"
-              />
-            </label>
+          <form onSubmit={handleLogin} className="mt-12">
+            <label className="block text-slate-300 font-bold mb-3">Email</label>
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-xl border border-slate-800 bg-slate-900 px-5 py-4 text-white text-lg"
+              placeholder="you@example.com"
+            />
 
-            <label className="block">
-              <span className="text-sm text-slate-300">Password</span>
-              <input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                type="password"
-                className="mt-2 w-full rounded-xl bg-white/10 border border-white/10 px-4 py-3 text-white outline-none focus:border-sky-400"
-              />
-            </label>
+            <label className="block text-slate-300 font-bold mb-3 mt-8">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-xl border border-slate-800 bg-slate-900 px-5 py-4 text-white text-lg"
+              placeholder="Password"
+            />
 
-            {error && (
-              <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
-                {error}
-              </div>
-            )}
+            {error && <p className="text-red-300 mt-5">{error}</p>}
 
-            <button className="w-full rounded-xl bg-gradient-to-r from-sky-400 to-blue-500 px-5 py-3 font-bold text-white">
-              Sign In
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full mt-8 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 px-6 py-4 font-black text-white text-lg disabled:opacity-50"
+            >
+              {loading ? "Signing in..." : "Sign In"}
             </button>
           </form>
         </div>
 
-        <div className="border border-white/10 rounded-3xl p-8 bg-[#0d1526]">
-          <h2 className="text-2xl font-bold">Demo Accounts</h2>
-          <p className="text-slate-400 mt-2">
+        <div className="rounded-3xl border border-slate-800 bg-[#0b1220] p-10">
+          <h2 className="text-4xl font-black">Demo Accounts</h2>
+          <p className="text-slate-400 mt-4 text-xl">
             Each account has different shop access.
           </p>
 
-          <div className="mt-6 space-y-4">
-            {DEMO_ACCOUNTS.map((account) => (
+          <div className="space-y-5 mt-10">
+            {demoAccounts.map((account) => (
               <button
-                key={account.id}
-                onClick={() => {
-                  setEmail(account.email);
-                  setPassword(account.password);
-                }}
-                className="w-full text-left rounded-2xl border border-white/10 bg-white/[0.03] p-4 hover:border-sky-400/40"
+                key={account.email}
+                onClick={() => fillDemo(account)}
+                className="w-full text-left rounded-2xl border border-slate-800 bg-slate-950/30 p-6 hover:border-cyan-500 transition"
               >
-                <p className="font-bold text-white">{account.name}</p>
-                <p className="text-sky-300 text-sm mt-1">{account.email}</p>
-                <p className="text-slate-500 text-sm mt-1">
-                  Password: demo123 · Shops: {account.allowedShopIds.join(", ")}
+                <h3 className="text-2xl font-black">{account.name}</h3>
+                <p className="text-cyan-300 font-bold mt-2">{account.email}</p>
+                <p className="text-slate-400 font-bold mt-2">
+                  Password: demo123 · Shops: {account.shops}
                 </p>
               </button>
             ))}
           </div>
+
+          <div className="mt-8 rounded-2xl border border-cyan-900 bg-cyan-950/20 p-6">
+            <h3 className="text-xl font-black">New user?</h3>
+            <p className="text-slate-400 mt-2">
+              Create a real shop workspace through onboarding, then come back and log in using that email and password.
+            </p>
+            <button
+              onClick={() => navigate("/onboarding")}
+              className="mt-5 rounded-xl border border-cyan-400 px-5 py-3 font-bold text-cyan-200"
+            >
+              Create Account →
+            </button>
+          </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
