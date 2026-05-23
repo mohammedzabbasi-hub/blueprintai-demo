@@ -1,6 +1,5 @@
 from db.database import Base, engine
 
-# Import models
 import models.user
 import models.shop
 import models.shop_connection
@@ -18,7 +17,6 @@ import models.activity_log
 print("Registered SQLAlchemy tables:", sorted(Base.metadata.tables.keys()))
 Base.metadata.create_all(bind=engine)
 
-# Force-create blueprint tables because SQLAlchemy metadata is not registering them correctly on Render
 with engine.begin() as conn:
     conn.exec_driver_sql("""
     CREATE TABLE IF NOT EXISTS revenue_blueprints (
@@ -34,17 +32,20 @@ with engine.begin() as conn:
     """)
 
     conn.exec_driver_sql("""
-    CREATE TABLE IF NOT EXISTS blueprint_steps (
+    CREATE TABLE IF NOT EXISTS revenue_blueprint_steps (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         blueprint_id INTEGER,
         step_number INTEGER,
         title VARCHAR,
         description TEXT,
-        category VARCHAR,
-        completed BOOLEAN DEFAULT 0,
+        action TEXT,
+        priority VARCHAR,
+        related_feature VARCHAR,
+        expected_result TEXT,
+        is_completed BOOLEAN DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(blueprint_id) REFERENCES revenue_blueprints(id)
     )
     """)
 
-print("Database tables created/verified, including revenue_blueprints and blueprint_steps.")
+print("Database tables created/verified, including revenue_blueprints and revenue_blueprint_steps.")
