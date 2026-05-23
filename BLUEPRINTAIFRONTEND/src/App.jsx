@@ -1,3 +1,4 @@
+import DataImport from "./pages/DataImport";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import AppLayout from "./components/AppLayout";
 import Landing from "./pages/Landing";
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="/creators/:creatorId" element={<CreatorDetail />} />
           <Route path="/connect-shop" element={<Navigate to="/settings" replace />} />
           <Route path="/connect" element={<Navigate to="/settings" replace />} />
+          <Route path="/data-import" element={<DataImport />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/activity-log" element={<ActivityLog />} />
         </Route>

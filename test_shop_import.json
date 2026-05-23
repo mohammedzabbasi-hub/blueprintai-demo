@@ -1,0 +1,66 @@
+{
+  "products": [
+    {
+      "product_name": "Glow Serum",
+      "product_id": "prod_001",
+      "sku": "GS-001",
+      "category": "Beauty",
+      "price": 24.99,
+      "inventory": 120
+    }
+  ],
+  "orders": [
+    {
+      "order_id": "order_001",
+      "product_id": "prod_001",
+      "product_name": "Glow Serum",
+      "quantity": 2,
+      "revenue": 49.98,
+      "buyer_region": "US",
+      "order_status": "completed"
+    }
+  ],
+  "creators": [
+    {
+      "name": "Sample Creator",
+      "tiktok_handle": "@samplecreator",
+      "category": "Beauty",
+      "follower_count": 50000,
+      "total_views": 120000,
+      "total_likes": 8500,
+      "total_orders": 35,
+      "total_revenue": 874.65
+    }
+  ],
+  "creatives": [
+    {
+      "title": "Glow Serum Demo",
+      "product": "Glow Serum",
+      "creator": "@samplecreator",
+      "video_url": "/demo-videos/TTAD1.mp4",
+      "insight": "Strong product demonstration with clear before-and-after hook.",
+      "hook_type": "Before and after",
+      "creator_type": "Beauty creator",
+      "views": 120000,
+      "likes": 8500,
+      "shares": 700,
+      "clicks": 3200,
+      "orders": 35,
+      "score": 8.7
+    }
+  ],
+  "metrics": [
+    {
+      "product_id": "prod_001",
+      "views": 120000,
+      "clicks": 3200,
+      "likes": 8500,
+      "shares": 700,
+      "orders": 35,
+      "revenue": 874.65,
+      "ctr": 2.67,
+      "cvr": 1.09,
+      "roas": 3.8
+    }
+  ]
+}
