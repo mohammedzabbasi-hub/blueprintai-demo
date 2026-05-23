@@ -6,6 +6,7 @@ import BlueprintImpactCard from "../components/BlueprintImpactCard";
 import { generateBlueprint, getLatestBlueprint } from "../services/blueprintApi";
 import "../styles/revenue-blueprint.css";
 
+import { createActivityLog } from "../services/activityLog";
 export default function RevenueBlueprint() {
   const [blueprint, setBlueprint] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -37,6 +38,26 @@ export default function RevenueBlueprint() {
       setError("");
       const data = await generateBlueprint(selectedShopId);
       setBlueprint(data);
+
+      try {
+        await createActivityLog({
+          activity_type: "blueprint",
+          title: "Blueprint generated",
+          description:
+            data?.summary ||
+            data?.diagnosis ||
+            "A new AI Growth Blueprint was generated.",
+          shop_id: data?.shop_id || selectedShopId || 1,
+          metadata: {
+            blueprint_id: data?.id,
+            main_goal: data?.main_goal,
+            estimated_impact: data?.estimated_impact,
+            steps_count: data?.steps?.length || 0,
+          },
+        });
+      } catch (logError) {
+        console.warn("Failed to save blueprint activity log:", logError);
+      }
     } catch (err) {
       console.error(err);
       setError("Could not generate blueprint.");
