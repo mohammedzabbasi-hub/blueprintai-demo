@@ -9,7 +9,8 @@ const links = [
   { to: "/revenue-blueprint", label: "Blueprint Creation" },
   { to: "/creators", label: "Creators" },
   { to: "/activity-log", label: "Activity Log" },
-  { to: "/data-import", label: "Settings" },
+  { to: "/data-import", label: "MVP Data Import" },
+  { to: "/settings", label: "Settings" },
 ];
 
 export default function AppSidebar() {

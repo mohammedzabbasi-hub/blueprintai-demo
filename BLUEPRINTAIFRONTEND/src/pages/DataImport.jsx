@@ -104,12 +104,17 @@ export default function DataImport() {
   return (
     <div className="min-h-screen bg-[#070b16] text-white px-8 py-10">
       <div className="rounded-3xl border border-slate-800 bg-[#0b1220] p-10 mb-8">
-        <p className="text-cyan-400 uppercase tracking-[0.25em] font-black">
-          Data Setup
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-cyan-400 uppercase tracking-[0.25em] font-black">
+            Data Setup
+          </p>
+          <span className="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-4 py-1 text-xs font-black uppercase tracking-widest text-yellow-200">
+            Temporary MVP Only
+          </span>
+        </div>
         <h1 className="text-6xl font-black mt-4">Import Shop Data</h1>
         <p className="text-slate-400 mt-5 text-xl">
-          Upload TikTok Shop CSV/JSON downloads into this workspace.
+          Temporary MVP tool: upload TikTok Shop CSV/JSON downloads into this workspace until real TikTok Shop OAuth is connected.
         </p>
         <p className="text-slate-500 mt-3">
           Current shop: {account.shopName} · Shop ID: {shopId}
