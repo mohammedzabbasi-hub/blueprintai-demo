@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from routes.onboarding import router as onboarding_router
 from api.routes import onboarding
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -74,3 +75,5 @@ from routes import revenue_blueprint
 app.include_router(revenue_blueprint.router, prefix="/blueprint", tags=["Revenue Blueprint"])
 
 app.include_router(activity_log_router)
+
+app.include_router(onboarding_router)
