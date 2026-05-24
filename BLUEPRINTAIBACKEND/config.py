@@ -1,9 +1,16 @@
 from pathlib import Path
 
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 BASE_DIR = Path(__file__).resolve().parent
+PLACEHOLDER_SECRET_KEYS = {
+    "",
+    "change-me",
+    "change-me-super-secret",
+    "replace-with-a-long-random-secret",
+}
 
 
 class Settings(BaseSettings):
@@ -42,6 +49,23 @@ class Settings(BaseSettings):
 
     FRAME_SAMPLE_SECONDS: int = 2
     ANALYSIS_MAX_FRAMES: int = 10
+
+    @field_validator("APP_ENV", mode="before")
+    @classmethod
+    def normalize_app_env(cls, value):
+        return str(value or "development").strip().lower()
+
+    @model_validator(mode="after")
+    def validate_production_secret_key(self):
+        secret_key = str(self.SECRET_KEY or "").strip()
+
+        if self.APP_ENV == "production" and secret_key in PLACEHOLDER_SECRET_KEYS:
+            raise ValueError(
+                "SECRET_KEY must be set to a strong non-placeholder value when APP_ENV=production"
+            )
+
+        self.SECRET_KEY = secret_key
+        return self
 
     @property
     def cors_origins_list(self) -> list[str]:

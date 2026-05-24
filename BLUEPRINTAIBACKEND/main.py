@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from routes.onboarding import router as onboarding_router
 from api.routes import onboarding
 from fastapi.middleware.cors import CORSMiddleware
+from config import settings
 from routes.login import router as login_router
 from routes.personalized import router as personalized_router
 from routes.data_import import router as data_import_router
@@ -48,7 +49,7 @@ def root():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
