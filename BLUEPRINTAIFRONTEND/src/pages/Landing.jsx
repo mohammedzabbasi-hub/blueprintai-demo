@@ -19,9 +19,9 @@ export default function Landing() {
             <a href="#how-it-works" className="transition hover:text-white">
               How It Works
             </a>
-            <a href="#testimonials" className="transition hover:text-white">
-              Testimonials
-            </a>
+            <Link to="/support" className="transition hover:text-white">
+              Support
+            </Link>
           </nav>
 
           <div className="flex items-center gap-4">
@@ -60,9 +60,9 @@ export default function Landing() {
           </h1>
 
           <p className="mt-10 max-w-4xl text-2xl leading-relaxed text-slate-500 md:text-[22px]">
-            BlueprintAI analyzes your ad creatives, identifies winning hooks and
-            creator styles, and recommends the next best ad angles — so you stop
-            guessing and start scaling.
+            BlueprintAI helps analyze uploaded creatives and manually imported
+            shop data, identifies useful hooks and creator styles, and recommends
+            next ad angles for MVP testing.
           </p>
 
           <div className="mt-12 flex flex-col gap-4 sm:flex-row">
@@ -84,15 +84,15 @@ export default function Landing() {
           <div className="mt-14 flex flex-wrap items-center justify-center gap-8 text-xl text-slate-500">
             <div className="flex items-center gap-3">
               <span className="text-green-500">✓</span>
-              <span>2,400+ sellers</span>
+              <span>Demo workspaces available</span>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-green-500">✓</span>
-              <span>50,000+ creatives analyzed</span>
+              <span>Manual CSV/JSON import</span>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-green-500">✓</span>
-              <span>3.2x avg ROAS lift</span>
+              <span>TikTok Shop OAuth/API integration planned</span>
             </div>
           </div>
         </section>
@@ -102,8 +102,8 @@ export default function Landing() {
             <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
               <h3 className="text-2xl font-semibold">Creative Analysis</h3>
               <p className="mt-4 text-lg leading-8 text-slate-500">
-                Break down hooks, formats, creator styles, pacing, and winning
-                visual patterns across your ads.
+                Break down hooks, formats, creator styles, pacing, and visual
+                patterns from uploaded creative assets.
               </p>
             </div>
 
@@ -111,7 +111,7 @@ export default function Landing() {
               <h3 className="text-2xl font-semibold">Winning Recommendations</h3>
               <p className="mt-4 text-lg leading-8 text-slate-500">
                 Get data-backed recommendations for your next creative direction
-                based on what is already converting.
+                based on the shop data you import into the MVP.
               </p>
             </div>
 
@@ -138,8 +138,8 @@ export default function Landing() {
                 </div>
                 <h3 className="text-2xl font-semibold">Upload creatives</h3>
                 <p className="mt-3 text-lg leading-8 text-slate-500">
-                  Import your TikTok ad assets and creative test history into one
-                  organized library.
+                  Upload creative assets and manually import CSV/JSON shop data
+                  into one organized workspace.
                 </p>
               </div>
 
@@ -150,7 +150,7 @@ export default function Landing() {
                 <h3 className="text-2xl font-semibold">Analyze performance</h3>
                 <p className="mt-3 text-lg leading-8 text-slate-500">
                   BlueprintAI identifies the hooks, creators, and structures most
-                  likely to drive results.
+                  associated with the performance data you provide.
                 </p>
               </div>
 
@@ -160,8 +160,8 @@ export default function Landing() {
                 </div>
                 <h3 className="text-2xl font-semibold">Launch the next winner</h3>
                 <p className="mt-3 text-lg leading-8 text-slate-500">
-                  Use recommendations and briefs to produce the next creative with
-                  more confidence.
+                  Use recommendations and briefs to plan the next creative. Direct
+                  TikTok Shop OAuth/API sync is planned for a later release.
                 </p>
               </div>
             </div>
@@ -202,6 +202,17 @@ export default function Landing() {
           </div>
         </section>
       </main>
+
+      <footer className="border-t border-slate-200 bg-white px-6 py-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
+          <p>BlueprintAI MVP. Manual import/upload today; TikTok Shop OAuth/API integration planned.</p>
+          <div className="flex flex-wrap gap-5 font-semibold">
+            <Link to="/privacy" className="hover:text-blue-600">Privacy</Link>
+            <Link to="/terms" className="hover:text-blue-600">Terms</Link>
+            <Link to="/support" className="hover:text-blue-600">Support</Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

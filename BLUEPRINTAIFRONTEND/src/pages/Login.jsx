@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://blueprintai-hvgq.onrender.com";
 
@@ -99,6 +99,11 @@ export default function Login() {
           <p className="text-slate-400 mt-6 text-xl">
             Sign in with a demo account or an account created during onboarding.
           </p>
+          <p className="mt-4 text-sm leading-6 text-slate-500">
+            Current MVP supports demo accounts, onboarding-created workspaces,
+            manual import, and creative upload/analysis. TikTok Shop OAuth is
+            not live yet.
+          </p>
 
           <form onSubmit={handleLogin} className="mt-12">
             <label className="block text-slate-300 font-bold mb-3">Email</label>
@@ -165,6 +170,12 @@ export default function Login() {
             </button>
           </div>
         </div>
+      </div>
+
+      <div className="mx-auto mt-8 flex max-w-7xl flex-wrap justify-center gap-5 text-sm font-bold text-slate-500">
+        <Link to="/privacy" className="hover:text-cyan-200">Privacy</Link>
+        <Link to="/terms" className="hover:text-cyan-200">Terms</Link>
+        <Link to="/support" className="hover:text-cyan-200">Support</Link>
       </div>
     </div>
   );

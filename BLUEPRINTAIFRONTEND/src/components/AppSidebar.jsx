@@ -60,6 +60,11 @@ export default function AppSidebar() {
       </nav>
 
       <div className="p-4 border-t border-slate-800">
+        <div className="mb-4 flex flex-wrap gap-x-3 gap-y-2 text-xs text-slate-500">
+          <Link to="/support" className="hover:text-slate-300">Support</Link>
+          <Link to="/privacy" className="hover:text-slate-300">Privacy</Link>
+          <Link to="/terms" className="hover:text-slate-300">Terms</Link>
+        </div>
         <button
           onClick={handleLogout}
           className="w-full rounded-xl px-4 py-3 text-sm text-left text-red-300 hover:bg-red-950 hover:text-red-100 transition"

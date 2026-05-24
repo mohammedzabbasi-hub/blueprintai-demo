@@ -12,6 +12,9 @@ import Settings from "./pages/Settings";
 import ActivityLog from "./pages/ActivityLog";
 import Login from "./pages/Login";
 import Onboarding from "./pages/Onboarding";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
+import Support from "./pages/Support";
 import Creators from "./pages/Creators";
 import CreatorDetail from "./pages/CreatorDetail";
 import NotFound from "./pages/NotFound";
@@ -24,6 +27,9 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/support" element={<Support />} />
 
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<Index />} />
