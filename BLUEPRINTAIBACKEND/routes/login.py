@@ -3,6 +3,7 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy import inspect, text
 from db.database import engine
 from passlib.hash import pbkdf2_sha256
+from utils.security import create_access_token
 
 router = APIRouter(prefix="/auth", tags=["app-login"])
 
@@ -26,6 +27,29 @@ def get_value(row, *keys):
             return row[key]
     return None
 
+def ensure_demo_user(conn, email, demo):
+    existing = conn.execute(
+        text("SELECT id FROM users WHERE lower(email) = :email LIMIT 1"),
+        {"email": email},
+    ).mappings().first()
+
+    if existing:
+        return existing["id"]
+
+    result = conn.execute(
+        text("""
+            INSERT INTO users (email, name, hashed_password, is_active)
+            VALUES (:email, :name, :hashed_password, :is_active)
+        """),
+        {
+            "email": email,
+            "name": demo["name"],
+            "hashed_password": pbkdf2_sha256.hash(demo["password"]),
+            "is_active": True,
+        },
+    )
+    return result.lastrowid
+
 @router.post("/app-login")
 def app_login(payload: LoginRequest):
     email = payload.email.lower().strip()
@@ -38,9 +62,15 @@ def app_login(payload: LoginRequest):
 
         shop_id = demo["shop_ids"][0]
 
+        if not table_exists("users"):
+            raise HTTPException(status_code=500, detail="Users table is not initialized.")
+
+        with engine.begin() as conn:
+            token_user_id = ensure_demo_user(conn, email, demo)
+
         return {
             "success": True,
-            "token": f"demo-token-{email}",
+            "token": create_access_token(subject=token_user_id),
             "user": {
                 "id": email,
                 "name": demo["name"],
@@ -120,7 +150,7 @@ def app_login(payload: LoginRequest):
 
     return {
         "success": True,
-        "token": f"user-token-{user_id}",
+        "token": create_access_token(subject=user_id),
         "user": {
             "id": user_id,
             "name": user_name,

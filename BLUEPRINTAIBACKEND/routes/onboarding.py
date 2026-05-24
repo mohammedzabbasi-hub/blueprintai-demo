@@ -3,6 +3,7 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy import inspect, text
 from db.database import engine
 from passlib.hash import pbkdf2_sha256
+from utils.security import create_access_token
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
@@ -115,7 +116,7 @@ def create_onboarding_account(payload: OnboardingCreateRequest):
 
     return {
         "success": True,
-        "token": f"demo-onboarding-token-{user_id}",
+        "token": create_access_token(subject=user_id),
         "user": {
             "id": user_id,
             "name": payload.name,
