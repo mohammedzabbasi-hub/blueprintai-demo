@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getSelectedShopId, getStoredShopName, setSelectedShop } from "../lib/shopSession";
-import { userCanAccessShop } from "../services/demoAuth";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
@@ -30,6 +29,65 @@ function normalizeShop(shop, index) {
   };
 }
 
+function safeJsonParse(value, fallback = null) {
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function getStoredUser() {
+  return safeJsonParse(localStorage.getItem("user"), {});
+}
+
+function getStoredSelectedShop() {
+  return safeJsonParse(localStorage.getItem("selectedShop"), null);
+}
+
+function isDemoUser(user) {
+  return user?.is_demo === true;
+}
+
+function getAllowedDemoShopIds(user) {
+  return Array.isArray(user?.shop_ids) ? user.shop_ids.map(Number) : [];
+}
+
+function filterAllowedDemoShops(shops, user) {
+  const allowed = new Set(getAllowedDemoShopIds(user));
+  return shops.filter((shop) => allowed.has(Number(shop.id || shop.shop_id)));
+}
+
+function getRealUserShop(user) {
+  const storedShop = getStoredSelectedShop();
+  const rawId =
+    storedShop?.id ||
+    storedShop?.shop_id ||
+    user?.shop_id ||
+    localStorage.getItem("selectedShopId") ||
+    localStorage.getItem("shop_id");
+
+  if (!rawId) return null;
+
+  return normalizeShop({
+    id: rawId,
+    shop_id: rawId,
+    shop_name:
+      storedShop?.shop_name ||
+      storedShop?.name ||
+      user?.shop_name ||
+      "My TikTok Shop",
+    name:
+      storedShop?.name ||
+      storedShop?.shop_name ||
+      user?.shop_name ||
+      "My TikTok Shop",
+    category: storedShop?.category || "TikTok Shop",
+    region: storedShop?.region || "US",
+    currency: storedShop?.currency || "USD",
+  });
+}
+
 export default function Settings() {
   const navigate = useNavigate();
   const [shops, setShops] = useState([]);
@@ -41,18 +99,46 @@ export default function Settings() {
   useEffect(() => {
     async function loadShops() {
       setLoadingShops(true);
+      const user = getStoredUser();
 
       try {
-        const res = await fetch(`${API_BASE}/demo/shops`);
-        if (!res.ok) throw new Error("Failed to load shops");
+        if (isDemoUser(user)) {
+          let demoShops = FALLBACK_SHOPS;
 
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : data.shops || [];
-        const normalized = list.map(normalizeShop);
+          try {
+            const res = await fetch(`${API_BASE}/demo/shops`);
+            if (res.ok) {
+              const data = await res.json();
+              const list = Array.isArray(data) ? data : data.shops || [];
+              demoShops = list.length ? list.map(normalizeShop) : FALLBACK_SHOPS;
+            }
+          } catch {
+            demoShops = FALLBACK_SHOPS;
+          }
 
-        setShops(normalized.length ? normalized : FALLBACK_SHOPS);
-      } catch {
-        setShops(FALLBACK_SHOPS);
+          const allowedShops = filterAllowedDemoShops(demoShops, user);
+          setShops(allowedShops);
+
+          const stillAllowed = allowedShops.some(
+            (shop) => String(shop.id) === String(selectedShopId)
+          );
+
+          if (!stillAllowed && allowedShops[0]) {
+            setSelectedShop(allowedShops[0]);
+            setSelectedShopId(String(allowedShops[0].id));
+            setSelectedShopName(allowedShops[0].shop_name);
+          }
+
+          return;
+        }
+
+        const realShop = getRealUserShop(user);
+        setShops(realShop ? [realShop] : []);
+
+        if (realShop) {
+          setSelectedShopId(String(realShop.id));
+          setSelectedShopName(realShop.shop_name);
+        }
       } finally {
         setLoadingShops(false);
       }
@@ -66,6 +152,19 @@ export default function Settings() {
   }, [shops, selectedShopId]);
 
   function handleSelectShop(shop) {
+    const user = getStoredUser();
+
+    if (isDemoUser(user) && !getAllowedDemoShopIds(user).includes(Number(shop.id))) {
+      return;
+    }
+
+    if (!isDemoUser(user)) {
+      const realShop = getRealUserShop(user);
+      if (!realShop || String(realShop.id) !== String(shop.id)) {
+        return;
+      }
+    }
+
     setSelectedShop(shop);
     setSelectedShopId(String(shop.id));
     setSelectedShopName(shop.shop_name);
@@ -143,9 +242,13 @@ export default function Settings() {
             <div className="rounded-2xl border border-slate-700 bg-slate-950/40 p-5">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h3 className="text-xl font-black">{activeShop?.shop_name || selectedShopName}</h3>
+                  <h3 className="text-xl font-black">
+                    {activeShop?.shop_name || (shops.length ? selectedShopName : "No shop connected")}
+                  </h3>
                   <p className="mt-1 text-slate-400">
-                    {activeShop?.category || "Demo TikTok Shop"} · {activeShop?.region || "US"}
+                    {shops.length
+                      ? `${activeShop?.category || "TikTok Shop"} · ${activeShop?.region || "US"}`
+                      : "Create a shop through onboarding to start using workspace data."}
                   </p>
                 </div>
                 <span className="rounded-full bg-emerald-500/15 px-4 py-2 text-sm font-black text-emerald-300">
@@ -279,6 +382,10 @@ export default function Settings() {
 
             {loadingShops ? (
               <div className="rounded-2xl border border-slate-800 p-6 text-slate-300">Loading shops...</div>
+            ) : shops.length === 0 ? (
+              <div className="rounded-2xl border border-slate-800 p-6 text-slate-300">
+                No shop is available for this account yet.
+              </div>
             ) : (
               <div className="grid gap-5 md:grid-cols-2">
                 {shops.map((shop) => {
