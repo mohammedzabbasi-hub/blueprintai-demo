@@ -3,6 +3,15 @@ import { API_BASE, getSelectedShopId, getAccountLabel } from "../lib/accountCont
 
 const tables = ["products", "orders", "creators", "creatives", "metrics"];
 
+function getAuthHeaders() {
+  const token =
+    localStorage.getItem("token") ||
+    localStorage.getItem("access_token") ||
+    localStorage.getItem("authToken");
+
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export default function DataImport() {
   const shopId = getSelectedShopId();
   const account = getAccountLabel();
@@ -15,7 +24,9 @@ export default function DataImport() {
   const [loading, setLoading] = useState(false);
 
   async function loadSummary() {
-    const res = await fetch(`${API_BASE}/data-import/summary?shop_id=${shopId}`);
+    const res = await fetch(`${API_BASE}/data-import/summary?shop_id=${shopId}`, {
+      headers: getAuthHeaders(),
+    });
     const data = await res.json();
     setSummary(data.summary || {});
   }
@@ -40,6 +51,7 @@ export default function DataImport() {
 
     const res = await fetch(`${API_BASE}/data-import/csv`, {
       method: "POST",
+      headers: getAuthHeaders(),
       body: form,
     });
 
@@ -70,6 +82,7 @@ export default function DataImport() {
 
     const res = await fetch(`${API_BASE}/data-import/json`, {
       method: "POST",
+      headers: getAuthHeaders(),
       body: form,
     });
 
@@ -92,6 +105,7 @@ export default function DataImport() {
 
     const res = await fetch(`${API_BASE}/data-import/clear?shop_id=${shopId}`, {
       method: "DELETE",
+      headers: getAuthHeaders(),
     });
 
     const data = await res.json();

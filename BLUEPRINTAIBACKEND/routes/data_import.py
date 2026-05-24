@@ -1,6 +1,9 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 from sqlalchemy import text, inspect
 from db.database import engine
+from deps import get_current_active_user
+from models.user import User
+from routes.login import DEMO_ACCOUNTS
 from datetime import datetime
 import csv
 import io
@@ -19,6 +22,36 @@ def column_info(table):
     if not table_exists(table):
         return {}
     return {c["name"]: c for c in inspect(engine).get_columns(table)}
+
+
+def verify_shop_owner(shop_id: int, current_user: User):
+    if not table_exists("shops"):
+        raise HTTPException(status_code=404, detail="Shop not found.")
+
+    with engine.begin() as conn:
+        shop = conn.execute(
+            text("SELECT id, user_id, tiktok_shop_id FROM shops WHERE id = :shop_id LIMIT 1"),
+            {"shop_id": shop_id},
+        ).mappings().first()
+
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found.")
+
+    email = str(getattr(current_user, "email", "") or "").lower()
+    demo_account = DEMO_ACCOUNTS.get(email)
+    is_allowed_demo_shop = (
+        demo_account is not None
+        and shop_id in demo_account["shop_ids"]
+        and str(shop.get("tiktok_shop_id") or "").startswith("demo_shop_")
+    )
+
+    if is_allowed_demo_shop:
+        return shop
+
+    if shop["user_id"] != current_user.id:
+        raise HTTPException(status_code=403, detail="You do not have access to this shop.")
+
+    return shop
 
 
 def clean_value(value):
@@ -117,7 +150,10 @@ async def import_csv(
     shop_id: int = Form(...),
     table_name: str = Form(...),
     file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user),
 ):
+    verify_shop_owner(shop_id, current_user)
+
     table_name = table_name.strip().lower()
 
     if table_name not in ALLOWED_TABLES:
@@ -138,7 +174,13 @@ async def import_csv(
 
 
 @router.post("/json")
-async def import_json(shop_id: int = Form(...), file: UploadFile = File(...)):
+async def import_json(
+    shop_id: int = Form(...),
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user),
+):
+    verify_shop_owner(shop_id, current_user)
+
     content = await file.read()
     data = json.loads(content.decode("utf-8-sig"))
 
@@ -164,7 +206,12 @@ async def import_json(shop_id: int = Form(...), file: UploadFile = File(...)):
 
 
 @router.get("/summary")
-def import_summary(shop_id: int):
+def import_summary(
+    shop_id: int,
+    current_user: User = Depends(get_current_active_user),
+):
+    verify_shop_owner(shop_id, current_user)
+
     summary = {}
 
     with engine.begin() as conn:
@@ -184,7 +231,12 @@ def import_summary(shop_id: int):
 
 
 @router.delete("/clear")
-def clear_shop_data(shop_id: int):
+def clear_shop_data(
+    shop_id: int,
+    current_user: User = Depends(get_current_active_user),
+):
+    verify_shop_owner(shop_id, current_user)
+
     deleted = {}
 
     with engine.begin() as conn:
