@@ -1,9 +1,72 @@
 import { Flame, Users, TrendingUp, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+function getLeaderboard(data) {
+  return data?.leaderboard || data?.top_creatives || [];
+}
+
 function getTopProduct(data) {
+  const creative = getLeaderboard(data)[0];
+  return creative?.product || creative?.product_name || "";
+}
+
+function getShopName(data) {
+  return data?.shop?.shop_name || data?.shop?.name || "Your Shop";
+}
+
+function topPattern(patternMap) {
+  return Object.entries(patternMap || {})
+    .map(([label, count]) => [label, Number(count || 0)])
+    .filter(([label, count]) => label && count > 0)
+    .sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+}
+
+function buildActions(data, handlers) {
   const leaderboard = data?.leaderboard || data?.top_creatives || [];
-  return leaderboard?.[0]?.product || "your top product";
+  const topCreative = leaderboard[0] || null;
+  const topProduct = getTopProduct(data);
+  const topHook = topPattern(data?.patterns?.hooks);
+  const topCreatorType = topPattern(data?.patterns?.creator_types);
+  const productPhrase = topProduct ? ` for ${topProduct}` : "";
+  const actions = [];
+
+  if (topHook) {
+    actions.push({
+      icon: Flame,
+      title: `Scale ${topHook} creatives`,
+      description: `Your connected shop shows ${topHook} as a leading hook pattern. Create 3 to 5 more variants using this opening angle${productPhrase}.`,
+      priority: "High",
+      actionLabel: "Generate Brief",
+      color: "rose",
+      onClick: handlers.goGenerateBrief,
+    });
+  }
+
+  if (topCreatorType) {
+    actions.push({
+      icon: Users,
+      title: `Recruit more ${topCreatorType} creators`,
+      description: `${topCreatorType} creators are showing up in this shop's winning creative mix. Prioritize creators with similar delivery style.`,
+      priority: "High",
+      actionLabel: "Find Creators",
+      color: "sky",
+      onClick: handlers.goFindCreators,
+    });
+  }
+
+  if (topCreative) {
+    actions.push({
+      icon: TrendingUp,
+      title: "Turn the top creative into variants",
+      description: `"${topCreative.title || topCreative.name || topCreative.product || "Top creative"}" is one of your top performers. Test new CTAs, new first 3 seconds, and a product-benefit version.`,
+      priority: "Medium",
+      actionLabel: "Create Variant",
+      color: "emerald",
+      onClick: handlers.goCreateVariant,
+    });
+  }
+
+  return actions;
 }
 
 function ActionCard({ icon: Icon, title, description, priority, actionLabel, onClick, color = "sky" }) {
@@ -52,13 +115,11 @@ function ActionCard({ icon: Icon, title, description, priority, actionLabel, onC
 export default function NextActions({ data }) {
   const navigate = useNavigate();
   const topProduct = getTopProduct(data);
+  const topCreative = getLeaderboard(data)[0] || null;
 
   function goGenerateBrief() {
     localStorage.setItem("briefProductName", topProduct);
-    localStorage.setItem(
-      "briefBrandName",
-      data?.shop?.shop_name || data?.shop?.name || "BluePrintAI Demo Brand"
-    );
+    localStorage.setItem("briefBrandName", getShopName(data));
     navigate("/ad-briefs");
   }
 
@@ -68,21 +129,27 @@ export default function NextActions({ data }) {
   }
 
   function goCreateVariant() {
-    const creative = data?.leaderboard?.[0] || data?.top_creatives?.[0] || null;
+    if (!topCreative) return;
 
     localStorage.setItem(
       "variantSourceCreative",
       JSON.stringify({
-        product: topProduct,
-        title: creative?.title || `Demo TikTok creative for ${topProduct}`,
-        hook_type: creative?.hook_type || "shock fact",
-        creator_type: creative?.creator_type || "UGC creator",
+        product: topCreative.product || topCreative.product_name || topProduct,
+        title: topCreative.title || topCreative.name || topCreative.product || "Top creative",
+        hook_type: topCreative.hook_type || "",
+        creator_type: topCreative.creator_type || "",
         recommendation: "Create a new hook, CTA, and product-benefit version from this top creative.",
       })
     );
 
     navigate("/revenue-blueprint");
   }
+
+  const actions = buildActions(data, {
+    goGenerateBrief,
+    goFindCreators,
+    goCreateVariant,
+  });
 
   return (
     <div className="bg-[#0d1526] border border-white/10 rounded-2xl p-6">
@@ -97,35 +164,20 @@ export default function NextActions({ data }) {
       </div>
 
       <div className="space-y-5">
-        <ActionCard
-          icon={Flame}
-          title="Scale shock fact creatives"
-          description={`Your connected shop shows shock fact as a leading hook pattern. Create 3 to 5 more variants using this opening angle for ${topProduct}.`}
-          priority="High"
-          actionLabel="Generate Brief"
-          color="rose"
-          onClick={goGenerateBrief}
-        />
+        {actions.length === 0 && (
+          <div className="border border-white/10 rounded-2xl p-6 bg-[#0d1526]">
+            <p className="text-sm font-semibold text-slate-300">
+              No recommended actions yet.
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              Import data or upload creatives to generate shop-specific next steps.
+            </p>
+          </div>
+        )}
 
-        <ActionCard
-          icon={Users}
-          title="Recruit more target collaboration creators"
-          description="Target collaboration creators are showing up most in this shop's winning creative mix. Prioritize creators with similar delivery style."
-          priority="High"
-          actionLabel="Find Creators"
-          color="sky"
-          onClick={goFindCreators}
-        />
-
-        <ActionCard
-          icon={TrendingUp}
-          title="Turn the top creative into variants"
-          description={`"${data?.leaderboard?.[0]?.title || `Demo TikTok creative for ${topProduct}`}" is one of your top performers. Test new CTAs, new first 3 seconds, and a product-benefit version.`}
-          priority="Medium"
-          actionLabel="Create Variant"
-          color="emerald"
-          onClick={goCreateVariant}
-        />
+        {actions.map((action) => (
+          <ActionCard key={action.title} {...action} />
+        ))}
       </div>
     </div>
   );

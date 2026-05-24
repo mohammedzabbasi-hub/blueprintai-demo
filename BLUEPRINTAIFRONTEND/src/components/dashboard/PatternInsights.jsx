@@ -1,41 +1,56 @@
 import { Sparkles } from "lucide-react";
 
-const patterns = [
+const GROUPS = [
   {
     category: "Hook Types",
-    items: [
-      { label: "Problem / Pain point", pct: 72, color: "bg-sky-500" },
-      { label: "Curiosity tease", pct: 61, color: "bg-blue-500" },
-      { label: "Transformation reveal", pct: 54, color: "bg-cyan-500" },
-    ],
+    key: "hooks",
+    colors: ["bg-sky-500", "bg-blue-500", "bg-cyan-500"],
   },
   {
     category: "Creator Styles",
-    items: [
-      { label: "Authentic UGC", pct: 81, color: "bg-emerald-500" },
-      { label: "Tutorial / How-to", pct: 68, color: "bg-teal-500" },
-      { label: "Talking head", pct: 45, color: "bg-green-500" },
-    ],
+    key: "creator_types",
+    colors: ["bg-emerald-500", "bg-teal-500", "bg-green-500"],
   },
   {
-    category: "CTA Patterns",
-    items: [
-      { label: "Urgency + scarcity", pct: 76, color: "bg-amber-500" },
-      { label: "Social proof close", pct: 63, color: "bg-orange-500" },
-      { label: "Direct price reveal", pct: 58, color: "bg-yellow-500" },
-    ],
+    category: "Humor Styles",
+    key: "humor_styles",
+    colors: ["bg-amber-500", "bg-orange-500", "bg-yellow-500"],
   },
   {
-    category: "Product Angles",
-    items: [
-      { label: "Results-first demo", pct: 79, color: "bg-rose-500" },
-      { label: "Lifestyle fit", pct: 66, color: "bg-pink-500" },
-      { label: "Ingredient education", pct: 41, color: "bg-red-500" },
-    ],
+    category: "Delivery Styles",
+    key: "delivery_styles",
+    colors: ["bg-rose-500", "bg-pink-500", "bg-red-500"],
   },
 ];
 
-export default function PatternInsights() {
+function toPatternItems(map, colors) {
+  const entries = Object.entries(map || {})
+    .map(([label, count]) => [label, Number(count || 0)])
+    .filter(([label, count]) => label && count > 0)
+    .sort((a, b) => b[1] - a[1]);
+
+  const total = entries.reduce((sum, [, count]) => sum + count, 0);
+  if (!total) return [];
+
+  return entries.slice(0, 3).map(([label, count], index) => ({
+    label,
+    pct: Math.round((count / total) * 100),
+    color: colors[index] || colors[0],
+  }));
+}
+
+function buildPatternGroups(data) {
+  const source = data?.patterns || {};
+
+  return GROUPS.map((group) => ({
+    category: group.category,
+    items: toPatternItems(source[group.key], group.colors),
+  })).filter((group) => group.items.length > 0);
+}
+
+export default function PatternInsights({ data }) {
+  const patternGroups = buildPatternGroups(data);
+
   return (
     <div className="bg-[#0d1526] border border-white/5 rounded-xl p-5 h-full">
       <div className="flex items-center gap-2 mb-5">
@@ -50,7 +65,18 @@ export default function PatternInsights() {
       </div>
 
       <div className="space-y-5">
-        {patterns.map((group) => (
+        {patternGroups.length === 0 && (
+          <div>
+            <p className="text-sm font-semibold text-slate-300">
+              No pattern insights yet.
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              Import data or upload creatives to generate shop-specific patterns.
+            </p>
+          </div>
+        )}
+
+        {patternGroups.map((group) => (
           <div key={group.category}>
             <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-2">
               {group.category}
