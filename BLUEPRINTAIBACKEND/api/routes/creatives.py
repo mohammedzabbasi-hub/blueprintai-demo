@@ -1,8 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from deps import get_current_active_user
 from db.database import get_db
 from models.creative import Creative
+from models.shop import Shop
+from models.user import User
+from routes.login import DEMO_ACCOUNTS
+from routes.personalized import verify_shop_access
 
 
 router = APIRouter(tags=["creatives"])
@@ -56,11 +61,23 @@ def creative_to_dict(creative: Creative):
 def get_creatives(
     shop_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
 ):
+    if shop_id is None:
+        email = str(getattr(current_user, "email", "") or "").lower()
+        if email in DEMO_ACCOUNTS:
+            raise HTTPException(status_code=400, detail="shop_id is required for demo accounts")
+
+        shop = db.query(Shop).filter(Shop.user_id == current_user.id).first()
+        if not shop:
+            return []
+        shop_id = shop.id
+    else:
+        verify_shop_access(db.connection(), shop_id, current_user)
+
     query = db.query(Creative)
 
-    if shop_id is not None:
-        query = query.filter(Creative.shop_id == shop_id)
+    query = query.filter(Creative.shop_id == shop_id)
 
     creatives = query.order_by(Creative.orders.desc(), Creative.views.desc()).all()
 
@@ -70,9 +87,17 @@ def get_creatives(
 @router.get("/{creative_id}")
 def get_creative(
     creative_id: int,
+    shop_id: int = Query(...),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
 ):
-    creative = db.query(Creative).filter(Creative.id == creative_id).first()
+    verify_shop_access(db.connection(), shop_id, current_user)
+
+    creative = (
+        db.query(Creative)
+        .filter(Creative.id == creative_id, Creative.shop_id == shop_id)
+        .first()
+    )
 
     if not creative:
         raise HTTPException(status_code=404, detail="Creative not found")

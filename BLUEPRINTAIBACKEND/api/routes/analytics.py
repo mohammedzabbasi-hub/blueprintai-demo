@@ -1,13 +1,17 @@
 from collections import Counter
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from deps import get_current_active_user
 from db.database import get_db
 from models.shop import Shop
 from models.creative import Creative
 from models.metric import Metric
+from models.user import User
+from routes.login import DEMO_ACCOUNTS
+from routes.personalized import verify_shop_access
 
 try:
     from models.brief import Brief
@@ -27,13 +31,19 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 def read_dashboard_analytics(
     shop_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
 ):
     shop_query = db.query(Shop)
 
-    if shop_id is not None:
-        shop = shop_query.filter(Shop.id == shop_id).first()
+    if shop_id is None:
+        email = str(getattr(current_user, "email", "") or "").lower()
+        if email in DEMO_ACCOUNTS:
+            raise HTTPException(status_code=400, detail="shop_id is required for demo accounts")
+
+        shop = shop_query.filter(Shop.user_id == current_user.id).first()
     else:
-        shop = shop_query.first()
+        verify_shop_access(db.connection(), shop_id, current_user)
+        shop = shop_query.filter(Shop.id == shop_id).first()
 
     if not shop:
         return {

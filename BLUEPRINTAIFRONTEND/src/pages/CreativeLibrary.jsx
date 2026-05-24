@@ -3,6 +3,15 @@ import { Link } from "react-router-dom";
 import EmptyWorkspaceState from "../components/EmptyWorkspaceState";
 import { API_BASE, getSelectedShopId, isDemoAccount } from "../lib/accountContext";
 
+function getAuthHeaders() {
+  const token =
+    localStorage.getItem("token") ||
+    localStorage.getItem("access_token") ||
+    localStorage.getItem("authToken");
+
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 function Metric({ label, value }) {
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
@@ -30,7 +39,9 @@ export default function CreativeLibrary() {
         ? `${API_BASE}/creatives?shop_id=${shopId}`
         : `${API_BASE}/personalized/creatives?shop_id=${shopId}`;
 
-      const res = await fetch(endpoint);
+      const res = await fetch(endpoint, {
+        headers: getAuthHeaders(),
+      });
       const data = await res.json();
 
       setCreatives(Array.isArray(data) ? data : data.creatives || []);

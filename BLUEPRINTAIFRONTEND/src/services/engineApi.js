@@ -1,5 +1,14 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
+function getAuthHeaders() {
+  const token =
+    localStorage.getItem("token") ||
+    localStorage.getItem("access_token") ||
+    localStorage.getItem("authToken");
+
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export function getSelectedShopId() {
   const rawUser = localStorage.getItem("demoUser");
 
@@ -22,7 +31,9 @@ export function getSelectedShopId() {
 }
 
 async function request(path) {
-  const res = await fetch(`${API_BASE}${path}`);
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: getAuthHeaders(),
+  });
   const data = await res.json().catch(() => null);
 
   if (!res.ok) {

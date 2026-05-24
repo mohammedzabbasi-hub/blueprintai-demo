@@ -137,11 +137,16 @@ def get_shop_state(shop_id: int):
 
 
 @router.get("/creatives")
-def get_personalized_creatives(shop_id: int):
+def get_personalized_creatives(
+    shop_id: int,
+    current_user: User = Depends(get_current_active_user),
+):
     if not table_exists("creatives") or "shop_id" not in columns("creatives"):
         return []
 
     with engine.begin() as conn:
+        verify_shop_access(conn, shop_id, current_user)
+
         rows = fetch_all(
             conn,
             "SELECT * FROM creatives WHERE shop_id = :shop_id ORDER BY id DESC",
