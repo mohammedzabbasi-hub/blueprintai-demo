@@ -1,7 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import inspect, text
 from db.database import engine
+from deps import get_current_active_user
+from models.user import User
+from routes.login import DEMO_ACCOUNTS
 from datetime import datetime
 
 router = APIRouter(prefix="/personalized", tags=["personalized"])
@@ -53,6 +56,32 @@ def insert_dynamic(conn, table_name, values):
 
 def fetch_all(conn, sql, params=None):
     return [dict(row) for row in conn.execute(text(sql), params or {}).mappings().all()]
+
+
+def verify_shop_access(conn, shop_id: int, current_user: User):
+    shop = conn.execute(
+        text("SELECT id, user_id, tiktok_shop_id FROM shops WHERE id = :shop_id LIMIT 1"),
+        {"shop_id": shop_id},
+    ).mappings().first()
+
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+
+    email = str(getattr(current_user, "email", "") or "").lower()
+    demo_account = DEMO_ACCOUNTS.get(email)
+    is_allowed_demo_shop = (
+        demo_account is not None
+        and shop_id in demo_account["shop_ids"]
+        and str(shop.get("tiktok_shop_id") or "").startswith("demo_shop_")
+    )
+
+    if is_allowed_demo_shop:
+        return shop
+
+    if shop["user_id"] != current_user.id:
+        raise HTTPException(status_code=403, detail="You do not have access to this shop")
+
+    return shop
 
 
 @router.get("/shop-state")
@@ -120,6 +149,33 @@ def get_personalized_creatives(shop_id: int):
         )
 
     return rows
+
+
+@router.get("/creatives/{creative_id}")
+def get_personalized_creative(
+    creative_id: int,
+    shop_id: int,
+    current_user: User = Depends(get_current_active_user),
+):
+    if not table_exists("creatives") or "shop_id" not in columns("creatives"):
+        raise HTTPException(status_code=404, detail="Creative not found")
+
+    with engine.begin() as conn:
+        verify_shop_access(conn, shop_id, current_user)
+
+        row = conn.execute(
+            text("""
+                SELECT * FROM creatives
+                WHERE id = :creative_id AND shop_id = :shop_id
+                LIMIT 1
+            """),
+            {"creative_id": creative_id, "shop_id": shop_id},
+        ).mappings().first()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Creative not found")
+
+    return dict(row)
 
 
 @router.post("/creatives")
