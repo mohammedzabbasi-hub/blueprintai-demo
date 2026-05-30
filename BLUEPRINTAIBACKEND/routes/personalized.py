@@ -58,6 +58,22 @@ def fetch_all(conn, sql, params=None):
     return [dict(row) for row in conn.execute(text(sql), params or {}).mappings().all()]
 
 
+def normalize_creator_metrics(row):
+    for field in [
+        "follower_count",
+        "total_videos",
+        "total_views",
+        "total_likes",
+        "total_comments",
+        "total_shares",
+        "total_conversions",
+        "total_revenue",
+    ]:
+        if field in row and row[field] is None:
+            row[field] = 0
+    return row
+
+
 def verify_shop_access(conn, shop_id: int, current_user: User):
     shop = conn.execute(
         text("SELECT id, user_id, tiktok_shop_id FROM shops WHERE id = :shop_id LIMIT 1"),
@@ -153,11 +169,39 @@ def get_personalized_creatives(
     with engine.begin() as conn:
         verify_shop_access(conn, shop_id, current_user)
 
-        rows = fetch_all(
-            conn,
-            "SELECT * FROM creatives WHERE shop_id = :shop_id ORDER BY id DESC",
-            {"shop_id": shop_id},
-        )
+        if table_exists("metrics"):
+            rows = fetch_all(
+                conn,
+                """
+                SELECT
+                    creatives.*,
+                    COALESCE(NULLIF(creatives.views, 0), metric_totals.views, 0) AS views,
+                    COALESCE(NULLIF(creatives.likes, 0), metric_totals.likes, 0) AS likes,
+                    COALESCE(NULLIF(creatives.shares, 0), metric_totals.shares, 0) AS shares,
+                    COALESCE(NULLIF(creatives.clicks, 0), metric_totals.clicks, 0) AS clicks,
+                    COALESCE(NULLIF(creatives.orders, 0), metric_totals.orders, 0) AS orders
+                FROM creatives
+                LEFT JOIN (
+                    SELECT creative_id,
+                           SUM(COALESCE(views, 0)) AS views,
+                           SUM(COALESCE(likes, 0)) AS likes,
+                           SUM(COALESCE(shares, 0)) AS shares,
+                           SUM(COALESCE(clicks, 0)) AS clicks,
+                           SUM(COALESCE(orders, 0)) AS orders
+                    FROM metrics
+                    GROUP BY creative_id
+                ) AS metric_totals ON metric_totals.creative_id = creatives.id
+                WHERE creatives.shop_id = :shop_id
+                ORDER BY creatives.id DESC
+                """,
+                {"shop_id": shop_id},
+            )
+        else:
+            rows = fetch_all(
+                conn,
+                "SELECT * FROM creatives WHERE shop_id = :shop_id ORDER BY id DESC",
+                {"shop_id": shop_id},
+            )
 
     return rows
 
@@ -280,18 +324,32 @@ def personalized_creators(shop_id: int):
         return []
 
     with engine.begin() as conn:
+        if {"shop_id", "brand_id"} <= creator_cols:
+            rows = fetch_all(
+                conn,
+                """
+                SELECT * FROM creators
+                WHERE shop_id = :shop_id OR brand_id = :shop_id
+                ORDER BY id DESC
+                """,
+                {"shop_id": shop_id},
+            )
+            return [normalize_creator_metrics(row) for row in rows]
+
         if "shop_id" in creator_cols:
-            return fetch_all(
+            rows = fetch_all(
                 conn,
                 "SELECT * FROM creators WHERE shop_id = :shop_id ORDER BY id DESC",
                 {"shop_id": shop_id},
             )
+            return [normalize_creator_metrics(row) for row in rows]
 
         if "brand_id" not in creator_cols:
             return []
 
-        return fetch_all(
+        rows = fetch_all(
             conn,
             "SELECT * FROM creators WHERE brand_id = :shop_id ORDER BY id DESC",
             {"shop_id": shop_id},
         )
+        return [normalize_creator_metrics(row) for row in rows]

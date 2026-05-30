@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from deps import get_db
 from models.shop import Shop
 from models.creative import Creative
+from models.metric import Metric
+from models.order import Order
 
 from services.metrics_calculator import calculate_shop_totals
 from services.pattern_engine import analyze_patterns, detect_shop_issues
@@ -25,7 +27,37 @@ def get_shop_or_404(db: Session, shop_id: int) -> Shop:
 
 
 def get_shop_creatives(db: Session, shop_id: int):
-    return db.query(Creative).filter(Creative.shop_id == shop_id).all()
+    creatives = db.query(Creative).filter(Creative.shop_id == shop_id).all()
+    creative_ids = [creative.id for creative in creatives]
+    if not creative_ids:
+        return creatives
+
+    metric_rows = db.query(Metric).filter(Metric.creative_id.in_(creative_ids)).all()
+    metric_totals = {}
+    for metric in metric_rows:
+        bucket = metric_totals.setdefault(
+            metric.creative_id,
+            {"views": 0, "clicks": 0, "orders": 0, "likes": 0, "shares": 0},
+        )
+        for field in bucket:
+            bucket[field] += int(getattr(metric, field, 0) or 0)
+
+    for creative in creatives:
+        totals = metric_totals.get(creative.id, {})
+        for field, value in totals.items():
+            if value and not int(getattr(creative, field, 0) or 0):
+                setattr(creative, field, value)
+
+    total_revenue = (
+        db.query(Order.total_amount)
+        .filter(Order.shop_id == shop_id)
+        .all()
+    )
+    revenue = sum(float(row[0] or 0) for row in total_revenue)
+    if revenue and len(creatives) == 1 and not hasattr(creatives[0], "revenue"):
+        setattr(creatives[0], "revenue", revenue)
+
+    return creatives
 
 
 @router.get("/analyze-shop")

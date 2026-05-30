@@ -9,6 +9,7 @@ from db.database import get_db
 from models.shop import Shop
 from models.creative import Creative
 from models.metric import Metric
+from models.order import Order
 from models.user import User
 from routes.login import DEMO_ACCOUNTS
 from routes.personalized import verify_shop_access
@@ -76,12 +77,41 @@ def read_dashboard_analytics(
         except Exception:
             return default
 
-    total_views = sum(int(safe_num(c, "views")) for c in creatives)
-    total_clicks = sum(int(safe_num(c, "clicks")) for c in creatives)
-    total_orders = sum(int(safe_num(c, "orders")) for c in creatives)
+    metrics = []
+    if creative_ids:
+        metrics = db.query(Metric).filter(Metric.creative_id.in_(creative_ids)).all()
+
+    metrics_by_creative = {}
+    for metric in metrics:
+        bucket = metrics_by_creative.setdefault(
+            metric.creative_id,
+            {"views": 0, "clicks": 0, "orders": 0, "likes": 0, "shares": 0},
+        )
+        bucket["views"] += int(safe_num(metric, "views"))
+        bucket["clicks"] += int(safe_num(metric, "clicks"))
+        bucket["orders"] += int(safe_num(metric, "orders"))
+        bucket["likes"] += int(safe_num(metric, "likes"))
+        bucket["shares"] += int(safe_num(metric, "shares"))
+
+    def creative_metric(creative, field):
+        value = int(safe_num(creative, field))
+        if value:
+            return value
+        return metrics_by_creative.get(creative.id, {}).get(field, 0)
+
+    total_views = sum(creative_metric(c, "views") for c in creatives)
+    total_clicks = sum(creative_metric(c, "clicks") for c in creatives)
+    total_orders = sum(creative_metric(c, "orders") for c in creatives)
 
     # Some DB versions do not have revenue on Creative, so calculate revenue safely.
     total_revenue = sum(safe_num(c, "revenue") for c in creatives)
+    if total_revenue == 0:
+        total_revenue = (
+            db.query(func.coalesce(func.sum(Order.total_amount), 0))
+            .filter(Order.shop_id == shop.id)
+            .scalar()
+            or 0
+        )
 
     # Fallback MVP revenue estimate if revenue column is missing/empty.
     if total_revenue == 0 and total_orders > 0:
@@ -178,11 +208,15 @@ def read_dashboard_analytics(
                 "engagement_score": creative.engagement_score,
                 "conversion_score": creative.conversion_score,
                 "score": creative.score,
-                "views": creative.views,
-                "likes": creative.likes,
-                "shares": creative.shares,
-                "clicks": creative.clicks,
-                "orders": creative.orders,
+                "views": creative_metric(creative, "views"),
+                "likes": creative_metric(creative, "likes"),
+                "shares": creative_metric(creative, "shares"),
+                "clicks": creative_metric(creative, "clicks"),
+                "orders": creative_metric(creative, "orders"),
+                "ctr": round((creative_metric(creative, "clicks") / creative_metric(creative, "views")) * 100, 2)
+                if creative_metric(creative, "views")
+                else 0,
+                "roas": avg_roas,
                 "thumbnail": getattr(creative, "thumbnail", None),
                 "thumbnail_url": getattr(creative, "thumbnail", None),
                 "video_url": getattr(creative, "video_url", None),

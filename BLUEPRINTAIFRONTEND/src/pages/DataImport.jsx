@@ -20,6 +20,7 @@ export default function DataImport() {
   const [csvFile, setCsvFile] = useState(null);
   const [jsonFile, setJsonFile] = useState(null);
   const [summary, setSummary] = useState({});
+  const [lastJsonResult, setLastJsonResult] = useState(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -91,6 +92,10 @@ export default function DataImport() {
     if (!res.ok) {
       setMessage(data.detail || "JSON import failed.");
     } else {
+      setLastJsonResult({
+        inserted: data.inserted || {},
+        skipped: data.skipped_duplicates || data.skipped || {},
+      });
       const insertedRaw =
         data.inserted_total ??
         data.inserted ??
@@ -223,6 +228,25 @@ export default function DataImport() {
       {message && (
         <div className="rounded-2xl border border-cyan-900 bg-cyan-950/30 p-5 mt-8 text-cyan-100 font-bold">
           {message}
+        </div>
+      )}
+
+      {lastJsonResult && (
+        <div className="rounded-3xl border border-slate-800 bg-[#0b1220] p-8 mt-8">
+          <h2 className="text-3xl font-black">Last JSON Import</h2>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-5 mt-6">
+            {tables.map((table) => (
+              <div key={table} className="rounded-2xl bg-slate-950/40 border border-slate-800 p-5">
+                <p className="text-slate-400 font-bold">{table}</p>
+                <p className="text-emerald-300 font-black mt-3">
+                  Inserted {Number(lastJsonResult.inserted?.[table] || 0).toLocaleString()}
+                </p>
+                <p className="text-amber-200 font-black mt-1">
+                  Skipped {Number(lastJsonResult.skipped?.[table] || 0).toLocaleString()}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

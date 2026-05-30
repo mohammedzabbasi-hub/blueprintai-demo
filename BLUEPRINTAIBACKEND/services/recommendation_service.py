@@ -2,6 +2,7 @@ from collections import defaultdict
 
 from models.shop import Shop
 from models.creative import Creative
+from models.metric import Metric
 
 
 def num(value):
@@ -131,6 +132,24 @@ def build_recommendations_for_shop(db, shop_id=None):
         .filter(Creative.shop_id == shop.id)
         .all()
     )
+
+    creative_ids = [creative.id for creative in creatives]
+    if creative_ids:
+        metric_rows = db.query(Metric).filter(Metric.creative_id.in_(creative_ids)).all()
+        metric_totals = {}
+        for metric in metric_rows:
+            bucket = metric_totals.setdefault(
+                metric.creative_id,
+                {"views": 0, "clicks": 0, "orders": 0, "likes": 0, "shares": 0},
+            )
+            for field in bucket:
+                bucket[field] += int(getattr(metric, field, 0) or 0)
+
+        for creative in creatives:
+            totals = metric_totals.get(creative.id, {})
+            for field, value in totals.items():
+                if value and not num(getattr(creative, field, 0)):
+                    setattr(creative, field, value)
 
     if not creatives:
         return {

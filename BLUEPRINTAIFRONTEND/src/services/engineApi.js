@@ -48,8 +48,8 @@ export async function getEngineAnalysis(shopId = getSelectedShopId()) {
 
   return {
     ...data,
-    shop_id: data.shop?.id || shopId,
-    shop_name: data.shop?.shop_name || data.shop?.name || "BluePrintAI",
+    shop_id: data?.shop?.id || shopId,
+    shop_name: data?.shop?.shop_name || data?.shop?.name || "BluePrintAI",
     scored_creatives: data.leaderboard || [],
     recommendations: data.recommendations || [],
     next_actions: data.next_actions || data.recommendations || [],

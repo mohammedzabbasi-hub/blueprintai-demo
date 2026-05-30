@@ -22,6 +22,8 @@ def get_ad_briefs(
         return {"shop_id": shop_id, "briefs": []}
 
     creatives = db.query(Creative).filter(Creative.shop_id == shop_id).all()
+    if not product_name and creatives:
+        product_name = getattr(creatives[0], "product", None)
 
     return {
         "shop_id": shop.id,

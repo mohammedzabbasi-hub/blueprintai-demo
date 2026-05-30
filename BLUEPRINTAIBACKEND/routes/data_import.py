@@ -60,6 +60,24 @@ def clean_value(value):
     return value
 
 
+def safe_int(value, default=0):
+    try:
+        if value is None or value == "":
+            return default
+        return int(float(value))
+    except (TypeError, ValueError):
+        return default
+
+
+def safe_float(value, default=0.0):
+    try:
+        if value is None or value == "":
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def normalize_row(table, row):
     row = {str(k).strip(): clean_value(v) for k, v in row.items()}
 
@@ -73,6 +91,7 @@ def normalize_row(table, row):
         row.setdefault("total_amount", row.get("revenue"))
         row.setdefault("status", row.get("order_status"))
         row.setdefault("order_status", row.get("status") or "imported")
+        row.setdefault("raw_payload", json.dumps(row, default=str))
         row.setdefault("created_at", datetime.utcnow().isoformat())
 
     if table == "creators":
@@ -83,6 +102,7 @@ def normalize_row(table, row):
         row.setdefault("name", row.get("title"))
         row.setdefault("title", row.get("name") or "Imported Creative")
         row.setdefault("thumbnail", row.get("thumbnail_url") or row.get("thumbnail"))
+        row.setdefault("promoter_handle", row.get("tiktok_handle") or row.get("handle"))
 
     return row
 
@@ -126,8 +146,22 @@ def resolve_metric_creative_id(conn, row, shop_id):
     if "shop_id" not in creative_cols:
         return None
 
+    title = row.get("title") or row.get("creative_title") or row.get("name")
     product = row.get("product") or row.get("product_name")
     creator = row.get("creator") or row.get("tiktok_handle") or row.get("handle")
+
+    if title and "title" in creative_cols:
+        found = conn.execute(
+            text("""
+                SELECT id FROM creatives
+                WHERE shop_id = :shop_id AND lower(title) = lower(:title)
+                ORDER BY id DESC
+                LIMIT 1
+            """),
+            {"shop_id": shop_id, "title": title},
+        ).scalar()
+        if found:
+            return found
 
     if product and "product" in creative_cols:
         found = conn.execute(
@@ -237,7 +271,170 @@ def find_duplicate(conn, table, row, shop_id):
     return None
 
 
-def insert_dynamic(conn, table, row, shop_id):
+def calculate_metric_rates(row):
+    views = safe_float(row.get("views"))
+    clicks = safe_float(row.get("clicks"))
+    orders = safe_float(row.get("orders"))
+    revenue = safe_float(row.get("revenue") or row.get("total_revenue"))
+    row.setdefault("ctr", round(clicks / views, 4) if views else 0)
+    row.setdefault("cvr", round(orders / clicks, 4) if clicks else 0)
+    if "roas" not in row and revenue:
+        # The current metrics schema has no ad_spend/revenue columns, so keep any
+        # imported ROAS if present and otherwise leave ROAS neutral.
+        row["roas"] = row.get("roas") or 0
+    return row
+
+
+def sync_creative_from_metric(conn, row):
+    creative_id = row.get("creative_id")
+    if not creative_id or not table_exists("creatives"):
+        return
+
+    cols = column_info("creatives")
+    updates = {}
+    for field in ["views", "likes", "shares", "clicks", "orders"]:
+        if field in cols and field in row:
+            updates[field] = safe_int(row.get(field))
+
+    if "comments" in cols and "comments" in row:
+        updates["comments"] = safe_int(row.get("comments"))
+
+    views = safe_float(row.get("views"))
+    likes = safe_float(row.get("likes"))
+    shares = safe_float(row.get("shares"))
+    clicks = safe_float(row.get("clicks"))
+    orders = safe_float(row.get("orders"))
+
+    if "engagement_score" in cols and views:
+        updates["engagement_score"] = round(((likes + shares) / views) * 100, 2)
+    if "conversion_score" in cols and views:
+        updates["conversion_score"] = round(((clicks + orders * 4) / views) * 100, 2)
+    if "score" in cols and views:
+        ctr = clicks / views if views else 0
+        cvr = orders / clicks if clicks else 0
+        updates["score"] = min(100, round((ctr * 1000) + (cvr * 250) + 40))
+
+    if not updates:
+        return
+
+    set_sql = ", ".join([f"{key} = :{key}" for key in updates])
+    updates["creative_id"] = creative_id
+    conn.execute(
+        text(f"UPDATE creatives SET {set_sql} WHERE id = :creative_id"),
+        updates,
+    )
+
+
+def sync_creator_from_creative(conn, creative_id):
+    if not creative_id or not table_exists("creators") or not table_exists("creatives"):
+        return
+
+    creator_cols = column_info("creators")
+    creative = conn.execute(
+        text("""
+            SELECT shop_id, creator, promoter_handle, views, likes, comments, shares, orders
+            FROM creatives
+            WHERE id = :creative_id
+            LIMIT 1
+        """),
+        {"creative_id": creative_id},
+    ).mappings().first()
+
+    if not creative:
+        return
+
+    creator_name = creative.get("creator")
+    handle = creative.get("promoter_handle") or creator_name
+    if not creator_name and not handle:
+        return
+
+    creator_id = None
+    if handle and "tiktok_handle" in creator_cols:
+        creator_id = conn.execute(
+            text("""
+                SELECT id FROM creators
+                WHERE brand_id = :shop_id AND lower(tiktok_handle) = lower(:handle)
+                LIMIT 1
+            """),
+            {"shop_id": creative["shop_id"], "handle": handle},
+        ).scalar()
+
+    if not creator_id and creator_name:
+        creator_id = conn.execute(
+            text("""
+                SELECT id FROM creators
+                WHERE brand_id = :shop_id AND lower(name) = lower(:name)
+                LIMIT 1
+            """),
+            {"shop_id": creative["shop_id"], "name": creator_name},
+        ).scalar()
+
+    if not creator_id:
+        return
+
+    updates = {}
+    field_map = {
+        "total_videos": 1,
+        "total_views": safe_int(creative.get("views")),
+        "total_likes": safe_int(creative.get("likes")),
+        "total_comments": safe_int(creative.get("comments")),
+        "total_shares": safe_int(creative.get("shares")),
+        "total_conversions": safe_int(creative.get("orders")),
+    }
+    for field, value in field_map.items():
+        if field in creator_cols:
+            updates[field] = value
+
+    revenue = conn.execute(
+        text("SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE shop_id = :shop_id"),
+        {"shop_id": creative["shop_id"]},
+    ).scalar()
+    if "total_revenue" in creator_cols:
+        updates["total_revenue"] = safe_int(revenue)
+
+    if not updates:
+        return
+
+    set_sql = ", ".join([f"{key} = :{key}" for key in updates])
+    updates["creator_id"] = creator_id
+    conn.execute(
+        text(f"UPDATE creators SET {set_sql} WHERE id = :creator_id"),
+        updates,
+    )
+
+
+def invalidate_revenue_blueprints(conn, shop_id):
+    if not table_exists("revenue_blueprints"):
+        return
+
+    blueprint_ids = [
+        row[0]
+        for row in conn.execute(
+            text("SELECT id FROM revenue_blueprints WHERE shop_id = :shop_id"),
+            {"shop_id": shop_id},
+        ).all()
+    ]
+    if not blueprint_ids:
+        return
+
+    if table_exists("revenue_blueprint_steps"):
+        conn.execute(
+            text("""
+                DELETE FROM revenue_blueprint_steps
+                WHERE blueprint_id IN (
+                    SELECT id FROM revenue_blueprints WHERE shop_id = :shop_id
+                )
+            """),
+            {"shop_id": shop_id},
+        )
+
+    conn.execute(
+        text("DELETE FROM revenue_blueprints WHERE shop_id = :shop_id"),
+        {"shop_id": shop_id},
+    )
+
+
+def insert_dynamic(conn, table, row, shop_id, return_existing=False):
     cols = column_info(table)
     actual_cols = set(cols.keys())
 
@@ -251,9 +448,14 @@ def insert_dynamic(conn, table, row, shop_id):
         row["creative_id"] = resolve_metric_creative_id(conn, row, shop_id)
         if not row["creative_id"]:
             return None
+        row = calculate_metric_rates(row)
 
-    if find_duplicate(conn, table, row, shop_id):
-        return None
+    duplicate_id = find_duplicate(conn, table, row, shop_id)
+    if duplicate_id:
+        if table == "metrics":
+            sync_creative_from_metric(conn, row)
+            sync_creator_from_creative(conn, row.get("creative_id"))
+        return duplicate_id if return_existing else None
 
     filtered = {
         k: v for k, v in row.items()
@@ -283,7 +485,13 @@ def insert_dynamic(conn, table, row, shop_id):
         filtered,
     )
 
-    return result.lastrowid
+    inserted_id = result.lastrowid
+
+    if table == "metrics":
+        sync_creative_from_metric(conn, row)
+        sync_creator_from_creative(conn, row.get("creative_id"))
+
+    return inserted_id
 
 
 @router.post("/csv")
@@ -330,6 +538,7 @@ async def import_json(
 
     inserted_totals = {}
     skipped_totals = {}
+    imported_creative_ids = []
 
     with engine.begin() as conn:
         for table_name in ["products", "creators", "creatives", "orders", "metrics"]:
@@ -343,13 +552,41 @@ async def import_json(
 
             for row in rows:
                 if isinstance(row, dict):
-                    if insert_dynamic(conn, table_name, row, shop_id):
+                    working_row = normalize_row(table_name, row)
+
+                    if table_name == "metrics" and not working_row.get("creative_id"):
+                        metric_index = inserted + skipped
+                        if len(imported_creative_ids) == 1:
+                            working_row["creative_id"] = imported_creative_ids[0]
+                        elif metric_index < len(imported_creative_ids):
+                            working_row["creative_id"] = imported_creative_ids[metric_index]
+
+                    if table_name == "metrics":
+                        working_row["creative_id"] = resolve_metric_creative_id(conn, working_row, shop_id)
+                        working_row = calculate_metric_rates(working_row)
+
+                    duplicate_id = find_duplicate(conn, table_name, working_row, shop_id)
+                    inserted_id = insert_dynamic(
+                        conn,
+                        table_name,
+                        working_row,
+                        shop_id,
+                        return_existing=True,
+                    )
+
+                    if table_name == "creatives" and inserted_id:
+                        imported_creative_ids.append(inserted_id)
+
+                    if inserted_id and not duplicate_id:
                         inserted += 1
                     else:
                         skipped += 1
 
             inserted_totals[table_name] = inserted
             skipped_totals[table_name] = skipped
+
+        if sum(inserted_totals.values()) > 0:
+            invalidate_revenue_blueprints(conn, shop_id)
 
     return {
         "success": True,
@@ -373,7 +610,15 @@ def import_summary(
     with engine.begin() as conn:
         for table_name in ALLOWED_TABLES:
             cols = column_info(table_name)
-            if table_exists(table_name) and "shop_id" in cols:
+            if table_name == "creators" and table_exists(table_name) and {"shop_id", "brand_id"} <= set(cols):
+                count = conn.execute(
+                    text("""
+                        SELECT COUNT(*) FROM creators
+                        WHERE shop_id = :shop_id OR brand_id = :shop_id
+                    """),
+                    {"shop_id": shop_id},
+                ).scalar() or 0
+            elif table_exists(table_name) and "shop_id" in cols:
                 count = conn.execute(
                     text(f"SELECT COUNT(*) FROM {table_name} WHERE shop_id = :shop_id"),
                     {"shop_id": shop_id},
@@ -413,7 +658,16 @@ def clear_shop_data(
     with engine.begin() as conn:
         for table_name in ALLOWED_TABLES:
             cols = column_info(table_name)
-            if table_exists(table_name) and "shop_id" in cols:
+            if table_name == "creators" and table_exists(table_name) and {"shop_id", "brand_id"} <= set(cols):
+                result = conn.execute(
+                    text("""
+                        DELETE FROM creators
+                        WHERE shop_id = :shop_id OR brand_id = :shop_id
+                    """),
+                    {"shop_id": shop_id},
+                )
+                deleted[table_name] = result.rowcount
+            elif table_exists(table_name) and "shop_id" in cols:
                 result = conn.execute(
                     text(f"DELETE FROM {table_name} WHERE shop_id = :shop_id"),
                     {"shop_id": shop_id},
@@ -436,5 +690,7 @@ def clear_shop_data(
                     {"shop_id": shop_id},
                 )
                 deleted[table_name] = result.rowcount
+
+        invalidate_revenue_blueprints(conn, shop_id)
 
     return {"success": True, "shop_id": shop_id, "deleted": deleted}

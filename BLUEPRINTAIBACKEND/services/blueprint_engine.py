@@ -52,6 +52,7 @@ def get_shop_metrics(db: Session, shop_id: int) -> Dict[str, Any]:
     try:
         from models.creative import Creative
         from models.metric import Metric
+        from models.order import Order
     except Exception:
         return empty_metrics()
 
@@ -72,6 +73,12 @@ def get_shop_metrics(db: Session, shop_id: int) -> Dict[str, Any]:
         for field in ["revenue", "total_revenue"]:
             if hasattr(metric, field):
                 total_revenue += safe_float(getattr(metric, field, 0))
+
+    if total_revenue == 0:
+        total_revenue = sum(
+            safe_float(row[0])
+            for row in db.query(Order.total_amount).filter(Order.shop_id == shop_id).all()
+        )
 
     ctr = (total_clicks / total_views * 100) if total_views else 0
     conversion_rate = (total_orders / total_clicks * 100) if total_clicks else 0
