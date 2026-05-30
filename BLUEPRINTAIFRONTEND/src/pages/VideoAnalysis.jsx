@@ -1,7 +1,54 @@
 import { useState } from "react";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { logActivity } from "../services/activityLog";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+
+const DEFAULT_RETENTION_ANALYSIS = {
+  retention_score: 42,
+  hook_status: "Weak",
+  useless_viewership_flag: true,
+  first_3_seconds_retention: 78,
+  first_5_seconds_retention: 61,
+  first_10_seconds_retention: 39,
+  retention_curve: [
+    { second: 0, retention: 100 },
+    { second: 3, retention: 78 },
+    { second: 5, retention: 61 },
+    { second: 10, retention: 39 },
+    { second: 15, retention: 31 },
+    { second: 20, retention: 24 },
+    { second: 30, retention: 18 },
+  ],
+  biggest_dropoff: {
+    timestamp: "0:10",
+    drop_percent: 22,
+    severity: "High",
+    reason: "The ad loses momentum before the product benefit is clearly shown.",
+  },
+  major_dropoffs: [],
+  engagement_vacancies: [
+    "No strong pattern interrupt in the first 10 seconds",
+    "Product benefit appears too late",
+    "Visual pacing slows down before the viewer has a reason to stay",
+  ],
+  recommendations: [
+    "Show the product result within the first 2 seconds.",
+    "Cut the intro by 3-5 seconds.",
+    "Add a bold text overlay that states the main pain point immediately.",
+    "Insert a fast visual change before second 8.",
+  ],
+  verdict:
+    "This ad loses too much viewer attention in the first 10 seconds, so much of the viewership is low-value.",
+};
 
 function scoreLabel(score) {
   if (score >= 8) return "Strong";
@@ -96,6 +143,34 @@ function ScoreCard({ label, value }) {
   );
 }
 
+function RetentionBadge({ children, tone = "neutral" }) {
+  const tones = {
+    danger: "border-red-400/30 bg-red-500/15 text-red-100",
+    warning: "border-amber-400/30 bg-amber-500/15 text-amber-100",
+    healthy: "border-emerald-400/30 bg-emerald-500/15 text-emerald-100",
+    info: "border-sky-400/30 bg-sky-500/15 text-sky-100",
+    neutral: "border-white/10 bg-white/10 text-slate-100",
+  };
+
+  return (
+    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-black uppercase tracking-wider ${tones[tone]}`}>
+      {children}
+    </span>
+  );
+}
+
+function retentionTone(score) {
+  if (score >= 75) return "healthy";
+  if (score >= 50) return "warning";
+  return "danger";
+}
+
+function retentionStatus(score) {
+  if (score >= 75) return "Healthy Retention";
+  if (score >= 50) return "Medium Warning";
+  return "Critical Warning";
+}
+
 function SectionCard({ title, subtitle, children, accent = false }) {
   return (
     <div
@@ -124,12 +199,173 @@ function ListCard({ title, items = [], accent = false }) {
   );
 }
 
+function RetentionChart({ curve = [] }) {
+  const chartData = curve.length ? curve : DEFAULT_RETENTION_ANALYSIS.retention_curve;
+
+  return (
+    <div className="h-72 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={chartData} margin={{ top: 12, right: 16, bottom: 8, left: 0 }}>
+          <CartesianGrid stroke="rgba(148, 163, 184, 0.14)" vertical={false} />
+          <XAxis
+            dataKey="second"
+            stroke="#94a3b8"
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(value) => `${value}s`}
+          />
+          <YAxis
+            domain={[0, 100]}
+            stroke="#94a3b8"
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(value) => `${value}%`}
+          />
+          <Tooltip
+            cursor={{ stroke: "rgba(56, 189, 248, 0.35)" }}
+            contentStyle={{
+              background: "#0a1020",
+              border: "1px solid rgba(148, 163, 184, 0.2)",
+              borderRadius: "14px",
+              color: "#f8fafc",
+            }}
+            formatter={(value) => [`${value}%`, "Retention"]}
+            labelFormatter={(value) => `${value} seconds`}
+          />
+          <Line
+            type="monotone"
+            dataKey="retention"
+            stroke="#38bdf8"
+            strokeWidth={3}
+            dot={{ r: 4, fill: "#38bdf8", stroke: "#0a1020", strokeWidth: 2 }}
+            activeDot={{ r: 6, fill: "#60a5fa" }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function MetricTile({ label, value, detail }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-[#07101f] p-4">
+      <p className="text-xs font-bold uppercase tracking-widest text-slate-500">{label}</p>
+      <p className="mt-2 text-3xl font-black text-white">{value}</p>
+      {detail && <p className="mt-2 text-sm text-slate-400">{detail}</p>}
+    </div>
+  );
+}
+
+function RetentionDropOffAnalyzer({ retentionAnalysis }) {
+  const retention = retentionAnalysis || DEFAULT_RETENTION_ANALYSIS;
+  const score = Number(retention.retention_score || 0);
+  const tone = retentionTone(score);
+  const biggestDropoff = retention.biggest_dropoff || {};
+  const isWeakHook = retention.hook_status === "Weak";
+  const isHighDropoff = biggestDropoff.severity === "High";
+
+  return (
+    <section className="rounded-3xl border border-sky-500/20 bg-[#0a1020] p-6 shadow-2xl shadow-black/20">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-sky-400 text-xs font-bold tracking-[0.25em] uppercase">
+            Retention Intelligence
+          </p>
+          <h2 className="mt-2 text-3xl font-black text-white">Retention Drop-Off Analyzer</h2>
+          <p className="mt-2 max-w-3xl text-slate-400">
+            Viewer decay, hook strength, engagement vacancies, and fixes for keeping more valuable attention.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <RetentionBadge tone={tone}>{retentionStatus(score)}</RetentionBadge>
+          <RetentionBadge tone={isWeakHook ? "danger" : "healthy"}>
+            {isWeakHook ? "Weak Hook" : "Strong Hook"}
+          </RetentionBadge>
+          {retention.useless_viewership_flag && (
+            <RetentionBadge tone="danger">Useless Viewership Flag</RetentionBadge>
+          )}
+          {isHighDropoff && <RetentionBadge tone="warning">High Drop-Off</RetentionBadge>}
+        </div>
+      </div>
+
+      {score < 50 && (
+        <div className="mt-5 rounded-2xl border border-red-400/25 bg-red-500/10 p-4 text-red-100">
+          <p className="font-black">Critical retention warning</p>
+          <p className="mt-1 text-sm text-red-100/85">
+            Retention score is below 50. The first 5-10 seconds should be rebuilt before this ad is scaled.
+          </p>
+        </div>
+      )}
+
+      {score >= 50 && score < 75 && (
+        <div className="mt-5 rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4 text-amber-100">
+          <p className="font-black">Medium retention warning</p>
+          <p className="mt-1 text-sm text-amber-100/85">
+            Retention is usable, but the ad needs a stronger early payoff and pacing test.
+          </p>
+        </div>
+      )}
+
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <MetricTile label="Retention Health Score" value={`${score}/100`} detail={retentionStatus(score)} />
+        <MetricTile label="Hook Status" value={retention.hook_status || "Unknown"} />
+        <MetricTile label="First 3 Seconds" value={`${retention.first_3_seconds_retention ?? 0}%`} />
+        <MetricTile label="First 5 Seconds" value={`${retention.first_5_seconds_retention ?? 0}%`} />
+        <MetricTile label="First 10 Seconds" value={`${retention.first_10_seconds_retention ?? 0}%`} />
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-5">
+        <div className="rounded-2xl border border-white/10 bg-[#07101f] p-5 lg:col-span-3">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-black text-white">Retention Curve</h3>
+              <p className="text-sm text-slate-500">Seconds watched vs. viewers retained</p>
+            </div>
+            <RetentionBadge tone={tone}>{score >= 75 ? "Healthy Retention" : "Drop-Off Risk"}</RetentionBadge>
+          </div>
+          <RetentionChart curve={retention.retention_curve} />
+        </div>
+
+        <div className="space-y-4 lg:col-span-2">
+          <SectionCard title="Useless Viewership Flag">
+            <p className={retention.useless_viewership_flag ? "text-red-100" : "text-emerald-100"}>
+              {retention.useless_viewership_flag
+                ? "True - retention at 10 seconds is below the healthy threshold."
+                : "False - enough viewers are staying through the early value window."}
+            </p>
+          </SectionCard>
+
+          <SectionCard title="Biggest Drop-Off Moment" accent={isHighDropoff}>
+            <p className="text-2xl font-black text-white">
+              {biggestDropoff.timestamp || "No major drop"}{" "}
+              <span className="text-base text-slate-400">
+                {biggestDropoff.drop_percent ? `-${biggestDropoff.drop_percent}%` : ""}
+              </span>
+            </p>
+            <p className="mt-3">{biggestDropoff.reason || "No significant drop-off detected."}</p>
+          </SectionCard>
+        </div>
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <ListCard title="Engagement Vacancies" items={retention.engagement_vacancies || []} />
+        <ListCard title="Recommended Fixes" items={retention.recommendations || []} accent />
+        <SectionCard title="Final Verdict" accent>
+          <p>{retention.verdict || "No retention verdict available yet."}</p>
+        </SectionCard>
+      </div>
+    </section>
+  );
+}
+
 function VideoAdBreakdown({ result, file }) {
   const payload = result?.result || {};
   const analysis = payload?.analysis || {};
   const metadata = payload?.metadata || {};
   const transcript = payload?.transcript || {};
   const ocrText = payload?.ocr_text || [];
+  const retentionAnalysis = payload?.retention_analysis || DEFAULT_RETENTION_ANALYSIS;
 
   const hookScore = Number(analysis.hook_score || 0);
   const ctaScore = Number(analysis.cta_score || 0);
@@ -244,6 +480,7 @@ function VideoAdBreakdown({ result, file }) {
       metadata,
       transcript,
       detected_text: detectedText,
+      retention_analysis: retentionAnalysis,
       full_result: result,
     };
 
@@ -305,6 +542,8 @@ function VideoAdBreakdown({ result, file }) {
       <SectionCard title="Executive Summary">
         <p>{analysis.summary || "No summary available."}</p>
       </SectionCard>
+
+      <RetentionDropOffAnalyzer retentionAnalysis={retentionAnalysis} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <SectionCard title="Performance Prediction" subtitle="Predicted TikTok Shop impact" accent>

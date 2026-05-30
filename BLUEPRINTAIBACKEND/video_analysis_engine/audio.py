@@ -27,6 +27,14 @@ def extract_audio(video_path: Path) -> Path:
     result = subprocess.run(command, capture_output=True, text=True)
 
     if result.returncode != 0:
+        no_audio_markers = [
+            "Output file does not contain any stream",
+            "Stream map 'a' matches no streams",
+            "does not contain any stream",
+        ]
+        if any(marker in result.stderr for marker in no_audio_markers):
+            return audio_path
+
         raise RuntimeError(f"FFmpeg audio extraction failed: {result.stderr}")
 
     return audio_path

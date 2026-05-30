@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import EmptyWorkspaceState from "../components/EmptyWorkspaceState";
-import { API_BASE, getSelectedShopId, isDemoAccount } from "../lib/accountContext";
+import { API_BASE, getSelectedShopId, getAuthHeaders, isDemoAccount } from "../lib/accountContext";
 
 export default function RevenueBlueprint() {
   const [blueprint, setBlueprint] = useState(null);
@@ -11,9 +11,15 @@ export default function RevenueBlueprint() {
 
   useEffect(() => {
     async function load() {
-      const stateRes = await fetch(`${API_BASE}/personalized/shop-state?shop_id=${shopId}`);
-      const state = await stateRes.json();
-      setShopState(state);
+      if (!demo) {
+        const stateRes = await fetch(`${API_BASE}/personalized/shop-state?shop_id=${shopId}`, {
+          headers: getAuthHeaders(),
+        });
+        if (stateRes.ok) {
+          const state = await stateRes.json();
+          setShopState(state);
+        }
+      }
 
       const res = await fetch(`${API_BASE}/blueprint/${shopId}/latest`);
       if (res.ok) {
@@ -33,7 +39,7 @@ export default function RevenueBlueprint() {
   async function generateBlueprint() {
     const res = await fetch(`${API_BASE}/blueprint/generate`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(true),
       body: JSON.stringify({ shop_id: shopId }),
     });
 

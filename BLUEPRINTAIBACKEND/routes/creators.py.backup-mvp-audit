@@ -37,37 +37,6 @@ def calculate_creator_score(creator: Creator) -> int:
     return round(views_score + engagement_score + revenue_score + consistency_score)
 
 
-def serialize_creator(creator: Creator) -> dict:
-    numeric_fields = [
-        "follower_count",
-        "total_videos",
-        "total_views",
-        "total_likes",
-        "total_comments",
-        "total_shares",
-        "total_conversions",
-        "total_revenue",
-    ]
-
-    data = {
-        "id": creator.id,
-        "user_id": creator.user_id,
-        "brand_id": creator.brand_id,
-        "name": creator.name,
-        "tiktok_handle": creator.tiktok_handle,
-        "profile_image": creator.profile_image,
-        "category": creator.category,
-        "notes": creator.notes,
-        "created_at": creator.created_at,
-        "updated_at": creator.updated_at,
-    }
-
-    for field in numeric_fields:
-        data[field] = getattr(creator, field) or 0
-
-    return data
-
-
 @router.post("/", response_model=CreatorOut)
 def create_creator(creator_data: CreatorCreate, db: Session = Depends(get_db)):
     creator = Creator(**creator_data.model_dump())
@@ -87,8 +56,7 @@ def get_creators(
     if shop_id is not None:
         query = query.filter(Creator.brand_id == shop_id)
 
-    creators = query.order_by(Creator.total_revenue.desc()).all()
-    return [serialize_creator(creator) for creator in creators]
+    return query.order_by(Creator.total_revenue.desc()).all()
 
 
 @router.get("/compare")
@@ -111,14 +79,14 @@ def compare_creators(
                 "id": creator.id,
                 "name": creator.name,
                 "tiktok_handle": creator.tiktok_handle,
-                "follower_count": creator.follower_count or 0,
-                "total_videos": creator.total_videos or 0,
-                "total_views": creator.total_views or 0,
-                "total_likes": creator.total_likes or 0,
-                "total_comments": creator.total_comments or 0,
-                "total_shares": creator.total_shares or 0,
-                "total_conversions": creator.total_conversions or 0,
-                "total_revenue": creator.total_revenue or 0,
+                "follower_count": creator.follower_count,
+                "total_videos": creator.total_videos,
+                "total_views": creator.total_views,
+                "total_likes": creator.total_likes,
+                "total_comments": creator.total_comments,
+                "total_shares": creator.total_shares,
+                "total_conversions": creator.total_conversions,
+                "total_revenue": creator.total_revenue,
                 "performance_score": calculate_creator_score(creator),
             }
         )
@@ -148,7 +116,7 @@ def get_creator(creator_id: int, db: Session = Depends(get_db)):
     if not creator:
         raise HTTPException(status_code=404, detail="Creator not found")
 
-    return serialize_creator(creator)
+    return creator
 
 
 @router.put("/{creator_id}", response_model=CreatorOut)

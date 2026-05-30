@@ -91,7 +91,34 @@ export default function DataImport() {
     if (!res.ok) {
       setMessage(data.detail || "JSON import failed.");
     } else {
-      setMessage("JSON import complete.");
+      const insertedRaw =
+        data.inserted_total ??
+        data.inserted ??
+        data.total_inserted ??
+        data.inserted_rows ??
+        0;
+
+      const skippedRaw =
+        data.skipped_total ??
+        data.skipped_duplicates ??
+        data.duplicates_skipped ??
+        data.skipped_rows ??
+        0;
+
+      const sumValue = (value) => {
+        if (typeof value === "number") return value;
+        if (value && typeof value === "object") {
+          return Object.values(value).reduce((sum, item) => sum + Number(item || 0), 0);
+        }
+        return Number(value || 0);
+      };
+
+      const inserted = sumValue(insertedRaw);
+      const skipped = sumValue(skippedRaw);
+
+      setMessage(
+        `JSON import complete. Imported ${inserted} new rows. Skipped ${skipped} duplicate rows.`
+      );
       await loadSummary();
     }
 

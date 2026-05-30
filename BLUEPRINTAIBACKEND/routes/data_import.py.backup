@@ -82,7 +82,6 @@ def normalize_row(table, row):
     if table == "creatives":
         row.setdefault("name", row.get("title"))
         row.setdefault("title", row.get("name") or "Imported Creative")
-        row.setdefault("thumbnail", row.get("thumbnail_url") or row.get("thumbnail"))
 
     return row
 
@@ -161,88 +160,20 @@ def resolve_metric_creative_id(conn, row, shop_id):
     ).scalar()
 
 
-def find_duplicate(conn, table, row, shop_id):
-    if table == "products" and row.get("name"):
-        return conn.execute(
-            text("""
-                SELECT id FROM products
-                WHERE shop_id = :shop_id AND lower(name) = lower(:name)
-                LIMIT 1
-            """),
-            {"shop_id": shop_id, "name": row["name"]},
-        ).scalar()
-
-    if table == "creators":
-        handle = row.get("tiktok_handle") or row.get("handle")
-        name = row.get("name")
-        if handle:
-            return conn.execute(
-                text("""
-                    SELECT id FROM creators
-                    WHERE brand_id = :shop_id AND lower(tiktok_handle) = lower(:handle)
-                    LIMIT 1
-                """),
-                {"shop_id": shop_id, "handle": handle},
-            ).scalar()
-        if name:
-            return conn.execute(
-                text("""
-                    SELECT id FROM creators
-                    WHERE brand_id = :shop_id AND lower(name) = lower(:name)
-                    LIMIT 1
-                """),
-                {"shop_id": shop_id, "name": name},
-            ).scalar()
-
-    if table == "creatives" and row.get("title"):
-        return conn.execute(
-            text("""
-                SELECT id FROM creatives
-                WHERE shop_id = :shop_id AND lower(title) = lower(:title)
-                LIMIT 1
-            """),
-            {"shop_id": shop_id, "title": row["title"]},
-        ).scalar()
-
-    if table == "orders":
-        order_id = row.get("tiktok_order_id") or row.get("order_id")
-        if order_id:
-            return conn.execute(
-                text("SELECT id FROM orders WHERE tiktok_order_id = :order_id LIMIT 1"),
-                {"order_id": order_id},
-            ).scalar()
-
-    if table == "metrics" and row.get("creative_id"):
-        return conn.execute(
-            text("""
-                SELECT id FROM metrics
-                WHERE creative_id = :creative_id
-                  AND COALESCE(views, 0) = :views
-                  AND COALESCE(clicks, 0) = :clicks
-                  AND COALESCE(orders, 0) = :orders
-                  AND COALESCE(likes, 0) = :likes
-                  AND COALESCE(shares, 0) = :shares
-                LIMIT 1
-            """),
-            {
-                "creative_id": row["creative_id"],
-                "views": int(row.get("views") or 0),
-                "clicks": int(row.get("clicks") or 0),
-                "orders": int(row.get("orders") or 0),
-                "likes": int(row.get("likes") or 0),
-                "shares": int(row.get("shares") or 0),
-            },
-        ).scalar()
-
-    return None
-
-
 def insert_dynamic(conn, table, row, shop_id):
     cols = column_info(table)
     actual_cols = set(cols.keys())
 
     row = normalize_row(table, row)
     row["shop_id"] = shop_id
+
+    if table == "orders" and row.get("tiktok_order_id"):
+        existing_order = conn.execute(
+            text("SELECT id FROM orders WHERE tiktok_order_id = :order_id LIMIT 1"),
+            {"order_id": row["tiktok_order_id"]},
+        ).scalar()
+        if existing_order:
+            return None
 
     if table == "creators":
         row["brand_id"] = shop_id
@@ -251,9 +182,6 @@ def insert_dynamic(conn, table, row, shop_id):
         row["creative_id"] = resolve_metric_creative_id(conn, row, shop_id)
         if not row["creative_id"]:
             return None
-
-    if find_duplicate(conn, table, row, shop_id):
-        return None
 
     filtered = {
         k: v for k, v in row.items()
@@ -328,8 +256,7 @@ async def import_json(
     except json.JSONDecodeError as exc:
         raise HTTPException(status_code=400, detail=f"Invalid JSON import file: {exc.msg}") from exc
 
-    inserted_totals = {}
-    skipped_totals = {}
+    totals = {}
 
     with engine.begin() as conn:
         for table_name in ["products", "creators", "creatives", "orders", "metrics"]:
@@ -338,27 +265,16 @@ async def import_json(
             if not isinstance(rows, list):
                 continue
 
-            inserted = 0
-            skipped = 0
+            count = 0
 
             for row in rows:
                 if isinstance(row, dict):
                     if insert_dynamic(conn, table_name, row, shop_id):
-                        inserted += 1
-                    else:
-                        skipped += 1
+                        count += 1
 
-            inserted_totals[table_name] = inserted
-            skipped_totals[table_name] = skipped
+            totals[table_name] = count
 
-    return {
-        "success": True,
-        "shop_id": shop_id,
-        "inserted": inserted_totals,
-        "skipped_duplicates": skipped_totals,
-        "inserted_total": sum(inserted_totals.values()),
-        "skipped_total": sum(skipped_totals.values()),
-    }
+    return {"success": True, "shop_id": shop_id, "inserted": totals}
 
 
 @router.get("/summary")

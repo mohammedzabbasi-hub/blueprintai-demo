@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
+from services.retention_analysis_service import analyze_retention, parse_retention_payload
 from video_analysis_engine.main import run_full_video_analysis
 
 router = APIRouter(prefix="/video-analysis", tags=["video-analysis"])
@@ -16,6 +17,7 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 async def analyze_video(
     file: UploadFile = File(...),
     shop_id: str | None = Form(default=None),
+    retention_data: str | None = Form(default=None),
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file uploaded")
@@ -37,6 +39,11 @@ async def analyze_video(
             shutil.copyfileobj(file.file, buffer)
 
         result = run_full_video_analysis(str(saved_path))
+        provided_curve = parse_retention_payload(retention_data)
+        result["retention_analysis"] = analyze_retention(
+            retention_curve=provided_curve,
+            analysis=result.get("analysis"),
+        )
 
         return {
             "success": True,

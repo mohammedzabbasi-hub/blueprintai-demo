@@ -54,8 +54,12 @@ export default function Recommendations() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {items.map((item, index) => (
           <div key={item.id || index} className="rounded-3xl border border-slate-800 bg-[#0b1220] p-7">
-            <h2 className="text-2xl font-black">{item.title || item.recommendation || "Recommendation"}</h2>
-            <p className="text-slate-400 mt-4">{item.description || item.details || item.reason || ""}</p>
+            <h2 className="text-2xl font-black">
+              {item.title || item.name || item.recommendation || "Recommendation"}
+            </h2>
+            <p className="text-slate-400 mt-4">
+              {item.description || item.details || item.reason || item.action || item.evidence || ""}
+            </p>
           </div>
         ))}
       </div>

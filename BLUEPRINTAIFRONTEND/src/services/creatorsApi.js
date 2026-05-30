@@ -1,23 +1,9 @@
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+import { API_BASE, getAuthHeaders, getSelectedShopId } from "../lib/accountContext";
 
-function getAuthHeaders() {
-  const token =
-    localStorage.getItem("token") ||
-    localStorage.getItem("access_token");
-
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
-
-function getConnectedShopId() {
-  return localStorage.getItem("connected_shop_id");
-}
+const API_BASE_URL = API_BASE;
 
 function withShopId(path) {
-  const shopId = getConnectedShopId();
+  const shopId = getSelectedShopId();
 
   if (!shopId) {
     throw new Error("No TikTok Shop connected. Please connect a demo shop first.");
@@ -53,11 +39,11 @@ export async function getCreatorById(creatorId) {
 }
 
 export async function createCreator(creatorData) {
-  const shopId = getConnectedShopId();
+  const shopId = getSelectedShopId();
 
   const response = await fetch(`${API_BASE_URL}/creators/`, {
     method: "POST",
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders(true),
     body: JSON.stringify({
       ...creatorData,
       brand_id: creatorData.brand_id || shopId,
@@ -70,7 +56,7 @@ export async function createCreator(creatorData) {
 export async function updateCreator(creatorId, creatorData) {
   const response = await fetch(`${API_BASE_URL}/creators/${creatorId}`, {
     method: "PUT",
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders(true),
     body: JSON.stringify(creatorData),
   });
 

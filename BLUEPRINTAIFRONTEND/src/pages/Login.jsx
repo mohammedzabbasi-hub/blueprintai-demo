@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://blueprintai-hvgq.onrender.com";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 const demoAccounts = [
   {
@@ -74,7 +74,11 @@ export default function Login() {
       navigate("/dashboard");
     } catch (err) {
       console.error(err);
-      setError(err.message || "Invalid email or password.");
+      if (err instanceof TypeError && err.message === "Failed to fetch") {
+        setError(`Could not reach the backend at ${API_BASE}. Start the FastAPI server or set VITE_API_BASE_URL.`);
+      } else {
+        setError(err.message || "Invalid email or password.");
+      }
     } finally {
       setLoading(false);
     }

@@ -117,9 +117,15 @@ def get_shop_state(shop_id: int):
                 {"shop_id": shop_id},
             ).scalar() or 0
 
-        if table_exists("creators") and "shop_id" in columns("creators"):
+        creator_cols = columns("creators")
+        if table_exists("creators") and "shop_id" in creator_cols:
             creators_count = conn.execute(
                 text("SELECT COUNT(*) FROM creators WHERE shop_id = :shop_id"),
+                {"shop_id": shop_id},
+            ).scalar() or 0
+        elif table_exists("creators") and "brand_id" in creator_cols:
+            creators_count = conn.execute(
+                text("SELECT COUNT(*) FROM creators WHERE brand_id = :shop_id"),
                 {"shop_id": shop_id},
             ).scalar() or 0
 
@@ -269,12 +275,23 @@ def personalized_briefs(shop_id: int):
 
 @router.get("/creators")
 def personalized_creators(shop_id: int):
-    if not table_exists("creators") or "shop_id" not in columns("creators"):
+    creator_cols = columns("creators")
+    if not table_exists("creators"):
         return []
 
     with engine.begin() as conn:
+        if "shop_id" in creator_cols:
+            return fetch_all(
+                conn,
+                "SELECT * FROM creators WHERE shop_id = :shop_id ORDER BY id DESC",
+                {"shop_id": shop_id},
+            )
+
+        if "brand_id" not in creator_cols:
+            return []
+
         return fetch_all(
             conn,
-            "SELECT * FROM creators WHERE shop_id = :shop_id ORDER BY id DESC",
+            "SELECT * FROM creators WHERE brand_id = :shop_id ORDER BY id DESC",
             {"shop_id": shop_id},
         )

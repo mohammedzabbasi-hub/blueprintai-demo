@@ -7,6 +7,7 @@ import PatternInsights from "../components/dashboard/PatternInsights";
 import NextActions from "../components/dashboard/NextActions";
 
 import { getEngineAnalysis } from "../services/engineApi";
+import { getSelectedShopId } from "../lib/accountContext";
 
 function safeJsonParse(value, fallback = {}) {
   try {
@@ -42,6 +43,7 @@ function getDashboardShopId(user = getStoredUser(), selectedShop = getStoredSele
   if (isDemoUser(user)) {
     const allowedIds = getAllowedDemoShopIds(user);
     const demoCandidates = [
+      getSelectedShopId(),
       selectedShop?.id,
       selectedShop?.shop_id,
       localStorage.getItem("selectedShopId"),
@@ -58,12 +60,13 @@ function getDashboardShopId(user = getStoredUser(), selectedShop = getStoredSele
   }
 
   const realCandidates = [
+    getSelectedShopId(),
     selectedShop?.id,
     selectedShop?.shop_id,
-    user?.shop_id,
-    user?.shopId,
     localStorage.getItem("connected_shop_id"),
     localStorage.getItem("shop_id"),
+    user?.shop_id,
+    user?.shopId,
   ];
 
   return realCandidates.map(toShopId).find(Boolean) || null;
