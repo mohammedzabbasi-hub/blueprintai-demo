@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+from sqlalchemy import inspect, text
+
 from db.database import SessionLocal, engine
 from db.base import Base
 
@@ -22,6 +24,50 @@ except Exception:
 
 
 DEMO_DIR = Path("demo_data/shops")
+
+
+def table_exists(table_name):
+    return table_name in inspect(engine).get_table_names()
+
+
+def clear_demo_shop_children(db, shop_id):
+    if table_exists("revenue_blueprint_steps") and table_exists("revenue_blueprints"):
+        db.execute(
+            text("""
+                DELETE FROM revenue_blueprint_steps
+                WHERE blueprint_id IN (
+                    SELECT id FROM revenue_blueprints WHERE shop_id = :shop_id
+                )
+            """),
+            {"shop_id": shop_id},
+        )
+
+    if table_exists("metrics") and table_exists("creatives"):
+        db.execute(
+            text("""
+                DELETE FROM metrics
+                WHERE creative_id IN (
+                    SELECT id FROM creatives WHERE shop_id = :shop_id
+                )
+            """),
+            {"shop_id": shop_id},
+        )
+
+    for table_name in [
+        "video_analyses",
+        "creatives",
+        "recommendations",
+        "briefs",
+        "orders",
+        "products",
+        "sync_jobs",
+        "revenue_blueprints",
+    ]:
+        if table_exists(table_name):
+            db.execute(text(f"DELETE FROM {table_name} WHERE shop_id = :shop_id"), {"shop_id": shop_id})
+
+    if table_exists("creators"):
+        db.execute(text("DELETE FROM creators WHERE brand_id = :shop_id"), {"shop_id": shop_id})
 
 
 def safe_int(value, default=0):
@@ -52,24 +98,6 @@ def seed_demo_shops():
 
         print(f"Found {len(files)} demo shop files")
 
-        # Clear old demo data
-        demo_shops = db.query(Shop).filter(Shop.tiktok_shop_id.like("demo_shop_%")).all()
-        demo_shop_ids = [shop.id for shop in demo_shops]
-
-        if demo_shop_ids:
-            demo_creatives = db.query(Creative).filter(Creative.shop_id.in_(demo_shop_ids)).all()
-            demo_creative_ids = [creative.id for creative in demo_creatives]
-
-            if demo_creative_ids:
-                db.query(Metric).filter(Metric.creative_id.in_(demo_creative_ids)).delete(synchronize_session=False)
-
-            db.query(Creative).filter(Creative.shop_id.in_(demo_shop_ids)).delete(synchronize_session=False)
-            db.query(Creator).filter(Creator.brand_id.in_(demo_shop_ids)).delete(synchronize_session=False)
-            db.query(Shop).filter(Shop.id.in_(demo_shop_ids)).delete(synchronize_session=False)
-
-            db.commit()
-            print("Cleared old demo shop data")
-
         for file_path in files:
             print(f"Importing {file_path.name}")
 
@@ -81,23 +109,31 @@ def seed_demo_shops():
             creators = data.get("creators", [])
             creatives = data.get("creatives", [])
 
-            shop = Shop(
-                user_id=None,
-                connection_id=shop_data.get("shop_id"),
-                shop_name=shop_data.get("shop_name"),
-                name=shop_data.get("shop_name"),
-                tiktok_shop_id=shop_data.get("shop_id"),
-                shop_code=shop_data.get("category"),
-                region=shop_data.get("region"),
-                currency=shop_data.get("currency"),
-                raw_payload=json.dumps({
+            shop_payload = {
+                "user_id": None,
+                "connection_id": shop_data.get("shop_id"),
+                "shop_name": shop_data.get("shop_name"),
+                "name": shop_data.get("shop_name"),
+                "tiktok_shop_id": shop_data.get("shop_id"),
+                "shop_code": shop_data.get("category"),
+                "region": shop_data.get("region"),
+                "currency": shop_data.get("currency"),
+                "raw_payload": json.dumps({
                     "metadata": data.get("metadata", {}),
                     "summary": summary,
                     "shop": shop_data
                 }),
-            )
+            }
 
-            db.add(shop)
+            shop = db.query(Shop).filter(Shop.tiktok_shop_id == shop_data.get("shop_id")).first()
+            if shop:
+                clear_demo_shop_children(db, shop.id)
+                for key, value in shop_payload.items():
+                    setattr(shop, key, value)
+            else:
+                shop = Shop(**shop_payload)
+                db.add(shop)
+
             db.commit()
             db.refresh(shop)
 

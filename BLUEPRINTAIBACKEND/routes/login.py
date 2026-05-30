@@ -36,7 +36,7 @@ def ensure_demo_user(conn, email, demo):
     if existing:
         return existing["id"]
 
-    result = conn.execute(
+    conn.execute(
         text("""
             INSERT INTO users (email, name, hashed_password, is_active)
             VALUES (:email, :name, :hashed_password, :is_active)
@@ -48,7 +48,12 @@ def ensure_demo_user(conn, email, demo):
             "is_active": True,
         },
     )
-    return result.lastrowid
+
+    created = conn.execute(
+        text("SELECT id FROM users WHERE lower(email) = :email LIMIT 1"),
+        {"email": email},
+    ).mappings().first()
+    return created["id"]
 
 @router.post("/app-login")
 def app_login(payload: LoginRequest):

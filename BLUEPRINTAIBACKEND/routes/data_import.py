@@ -480,12 +480,12 @@ def insert_dynamic(conn, table, row, shop_id, return_existing=False):
     col_sql = ", ".join(filtered.keys())
     bind_sql = ", ".join([f":{k}" for k in filtered.keys()])
 
-    result = conn.execute(
+    conn.execute(
         text(f"INSERT INTO {table} ({col_sql}) VALUES ({bind_sql})"),
         filtered,
     )
 
-    inserted_id = result.lastrowid
+    inserted_id = find_duplicate(conn, table, row, shop_id)
 
     if table == "metrics":
         sync_creative_from_metric(conn, row)

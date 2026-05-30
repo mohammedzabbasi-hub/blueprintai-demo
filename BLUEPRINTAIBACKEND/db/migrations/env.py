@@ -5,9 +5,10 @@ from sqlalchemy import engine_from_config, pool
 
 from config import settings
 from db.base import Base
+from db.session import normalize_database_url
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", normalize_database_url(settings.DATABASE_URL))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

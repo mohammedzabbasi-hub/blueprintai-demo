@@ -17,35 +17,4 @@ import models.activity_log
 print("Registered SQLAlchemy tables:", sorted(Base.metadata.tables.keys()))
 Base.metadata.create_all(bind=engine)
 
-with engine.begin() as conn:
-    conn.exec_driver_sql("""
-    CREATE TABLE IF NOT EXISTS revenue_blueprints (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        shop_id INTEGER NOT NULL,
-        title VARCHAR,
-        main_goal VARCHAR,
-        diagnosis TEXT,
-        summary TEXT,
-        estimated_impact TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-
-    conn.exec_driver_sql("""
-    CREATE TABLE IF NOT EXISTS revenue_blueprint_steps (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        blueprint_id INTEGER,
-        step_number INTEGER,
-        title VARCHAR,
-        description TEXT,
-        action TEXT,
-        priority VARCHAR,
-        related_feature VARCHAR,
-        expected_result TEXT,
-        is_completed BOOLEAN DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(blueprint_id) REFERENCES revenue_blueprints(id)
-    )
-    """)
-
-print("Database tables created/verified, including revenue_blueprints and revenue_blueprint_steps.")
+print("Database tables created/verified.")
