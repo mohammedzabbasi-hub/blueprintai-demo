@@ -36,3 +36,13 @@ BLUEPRINTAIBACKEND/.DS_Store
 BLUEPRINTAIBACKEND/storage/uploads/
 BLUEPRINTAIBACKEND/video_analysis_engine/uploads/
 BLUEPRINTAIBACKEND/video_analysis_engine/frames_output/
+
+# MVP audit cleanup
+*.backup
+*.backup-*
+*.save
+test-results/
+playwright-report/
+*.log
+.env
+.env.*
