@@ -19,19 +19,42 @@ class OnboardingSave(BaseModel):
 
 
 def ensure_table(db: Session):
-    db.execute(text("""
-        CREATE TABLE IF NOT EXISTS user_onboarding (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL UNIQUE,
-            store_name TEXT,
-            niche TEXT,
-            average_price TEXT,
-            main_goal TEXT,
-            connected_shop_id INTEGER,
-            completed INTEGER DEFAULT 0
-        )
-    """))
+    dialect_name = db.get_bind().dialect.name
+
+    if dialect_name == "sqlite":
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS user_onboarding (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL UNIQUE,
+                store_name TEXT,
+                niche TEXT,
+                average_price TEXT,
+                main_goal TEXT,
+                connected_shop_id INTEGER,
+                completed INTEGER DEFAULT 0
+            )
+        """))
+    else:
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS user_onboarding (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL UNIQUE,
+                store_name TEXT,
+                niche TEXT,
+                average_price TEXT,
+                main_goal TEXT,
+                connected_shop_id INTEGER,
+                completed BOOLEAN DEFAULT FALSE
+            )
+        """))
+
     db.commit()
+
+
+def serialize_completed(value: bool, db: Session):
+    if db.get_bind().dialect.name == "sqlite":
+        return 1 if value else 0
+    return bool(value)
 
 
 @router.get("/me")
@@ -97,7 +120,7 @@ def save_my_onboarding(
             "average_price": payload.average_price,
             "main_goal": payload.main_goal,
             "connected_shop_id": payload.connected_shop_id,
-            "completed": 1 if payload.completed else 0,
+            "completed": serialize_completed(payload.completed, db),
         },
     )
 

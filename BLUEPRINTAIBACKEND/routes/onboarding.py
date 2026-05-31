@@ -1,7 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import inspect, text
-from db.database import engine
+from db.database import Base, engine
+import models.shop
+import models.user
 from passlib.hash import pbkdf2_sha256
 from utils.security import create_access_token
 
@@ -19,6 +21,10 @@ class OnboardingCreateRequest(BaseModel):
 
 
 def ensure_min_tables(conn):
+    if engine.dialect.name != "sqlite":
+        Base.metadata.create_all(bind=engine)
+        return
+
     conn.execute(text("""
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,6 +67,29 @@ def insert_dynamic(conn, table_name, values):
         text(f"INSERT INTO {table_name} ({col_sql}) VALUES ({bind_sql})"),
         filtered,
     )
+
+    if table_name == "users" and filtered.get("email"):
+        created = conn.execute(
+            text("SELECT id FROM users WHERE lower(email) = :email LIMIT 1"),
+            {"email": str(filtered["email"]).lower()},
+        ).mappings().first()
+        return created["id"]
+
+    if table_name == "shops" and filtered.get("user_id") and filtered.get("tiktok_shop_id"):
+        created = conn.execute(
+            text("""
+                SELECT id FROM shops
+                WHERE user_id = :user_id AND tiktok_shop_id = :tiktok_shop_id
+                ORDER BY id DESC
+                LIMIT 1
+            """),
+            {
+                "user_id": filtered["user_id"],
+                "tiktok_shop_id": filtered["tiktok_shop_id"],
+            },
+        ).mappings().first()
+        return created["id"]
+
     return result.lastrowid
 
 

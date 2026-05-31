@@ -15,14 +15,19 @@ export default function CreatorDetail() {
   const [creator, setCreator] = useState(null);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
   async function loadCreator() {
     try {
+      setLoading(true);
       const data = await getCreatorById(creatorId);
       setCreator(data);
       setError("");
     } catch (err) {
       setError(err.message || "Failed to load creator");
+      setCreator(null);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -49,8 +54,27 @@ export default function CreatorDetail() {
     loadCreator();
   }, [creatorId]);
 
-  if (!creator) {
+  if (loading) {
     return <div className="p-6 text-gray-600">Loading creator...</div>;
+  }
+
+  if (!creator) {
+    return (
+      <main className="min-h-screen bg-gray-50 p-6">
+        <div className="mx-auto max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h1 className="text-2xl font-bold text-gray-900">Creator not found</h1>
+          <p className="mt-3 text-gray-600">
+            {error || "This creator is not available for the current shop."}
+          </p>
+          <button
+            onClick={() => navigate("/creators")}
+            className="mt-5 rounded-xl bg-slate-900 px-4 py-2 font-medium text-white"
+          >
+            Back to creators
+          </button>
+        </div>
+      </main>
+    );
   }
 
   const engagement =
